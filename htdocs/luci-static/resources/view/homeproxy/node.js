@@ -412,9 +412,10 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 		}
 		o.onclick = function(ev, section_id) {
 			uci.set(data[0], 'config', 'main_node', section_id);
-			ui.changes.apply(true);
 
-			return this.map.save(null, true);
+			return this.map.save(null, true).then(() => {
+				ui.changes.apply(true);
+			});
 		}
 	}
 
@@ -558,6 +559,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.modalonly = true;
 
 	o = s.option(form.Value, 'hysteria_auth_payload', _('Authentication payload'));
+	o.password = true
 	o.depends({'type': 'hysteria', 'hysteria_auth_type': /[\s\S]/});
 	o.rmempty = false;
 	o.modalonly = true;
@@ -569,6 +571,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 	o.modalonly = true;
 
 	o = s.option(form.Value, 'hysteria_obfs_password', _('Obfuscate password'));
+	o.password = true;
 	o.depends('type', 'hysteria');
 	o.depends({'type': 'hysteria2', 'hysteria_obfs_type': /[\s\S]/});
 	o.modalonly = true;
@@ -685,6 +688,7 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 
 	/* TUIC config start */
 	o = s.option(form.Value, 'uuid', _('UUID'));
+	o.password = true;
 	o.depends('type', 'tuic');
 	o.depends('type', 'vless');
 	o.depends('type', 'vmess');
@@ -1141,11 +1145,13 @@ function renderNodeSettings(section, data, features, main_node, routing_mode) {
 		o.modalonly = true;
 
 		o = s.option(form.Value, 'tls_reality_public_key', _('REALITY public key'));
+		o.password = true;
 		o.depends('tls_reality', '1');
 		o.rmempty = false;
 		o.modalonly = true;
 
 		o = s.option(form.Value, 'tls_reality_short_id', _('REALITY short ID'));
+		o.password = true;
 		o.depends('tls_reality', '1');
 		o.modalonly = true;
 	}
@@ -1234,7 +1240,7 @@ return view.extend({
 					'',
 					E('button', {
 						class: 'btn cbi-button-action',
-						click: ui.createHandlerFn(this, function() {
+						click: ui.createHandlerFn(this, () => {
 							let input_links = textarea.getValue().trim().split('\n');
 							if (input_links && input_links[0]) {
 								/* Remove duplicate lines */
@@ -1271,7 +1277,7 @@ return view.extend({
 									.then(L.bind(this.map.load, this.map))
 									.then(L.bind(this.map.reset, this.map))
 									.then(L.ui.hideModal)
-									.catch(function() {});
+									.catch(() => {});
 							} else {
 								return ui.hideModal();
 							}
@@ -1390,8 +1396,9 @@ return view.extend({
 		o.inputstyle = 'apply';
 		o.inputtitle = _('Save current settings');
 		o.onclick = function() {
-			ui.changes.apply(true);
-			return this.map.save(null, true);
+			return this.map.save(null, true).then(() => {
+				ui.changes.apply(true);
+			});
 		}
 
 		o = s.taboption('subscription', form.Button, '_update_subscriptions', _('Update nodes from subscriptions'));

@@ -65,10 +65,10 @@ if (!migration_crontab) {
 }
 
 /* log_level was introduced */
-if (isEmpty(uci.get(uciconfig, ucimain, 'log_level'))
+if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 	uci.set(uciconfig, ucimain, 'log_level', 'warn');
 
-if (isEmpty(uci.get(uciconfig, uciserver, 'log_level'))
+if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
 
 /* empty value defaults to all ports now */
@@ -96,7 +96,7 @@ const dns_server_migration = {};
 uci.foreach(uciconfig, ucidnsserver, (cfg) => {
 	/* legacy format was deprecated in sb 1.12 */
 	if (cfg.address) {
-		const addr = parseURL((!match(cfg.address, /:\/\//) ? 'udp://' : '') + cfg.address);
+		const addr = parseURL((!match(cfg.address, /:\/\//) ? 'udp://' : '') + (validation('ip6addr', cfg.address) ? `[${cfg.address}]` : cfg.address));
 		/* RCode was moved into DNS rules */
 		if (addr.protocol === 'rcode') {
 			dns_server_migration[cfg['.name']] = { action: 'predefined' };
