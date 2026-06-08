@@ -1,33 +1,7 @@
-name: Build ipk for HomeProxy
+name: Build avkiller ipk for HomeProxy
 
 on:
-  push:
-    branches:
-      - 'master'
-      - 'dev'
-    paths:
-      - 'htdocs/**'
-      - 'po/**'
-      - 'root/**'
-      - 'Makefile'
-      - '.github/**'
-      - '!.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
-  pull_request:
-    branches:
-      - 'master'
-      - 'dev'
-    types:
-      - opened
-      - synchronize
-      - reopened
-    paths:
-      - 'htdocs/**'
-      - 'root/**'
-      - 'Makefile'
-      - '.github/**'
-      - '!.github/ISSUE_TEMPLATE/**'
-
   release:
     types:
       - published
@@ -115,7 +89,7 @@ jobs:
 
       - name: Publishing to GitHub Releases
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
+        # if: github.event_name == 'release'
         with:
           repo_token: ${{ github.token }}
           file: .github/luci-app-homeproxy_*.*
