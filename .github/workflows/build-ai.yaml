@@ -107,11 +107,15 @@ jobs:
         run: |
           curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
           sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
-
-          # 下载 opkg-make-index（替代 apt 安装 opkg-utils）
-          curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/opkg-make-index"
-          sudo install -m0755 opkg-make-index /usr/local/bin/
-
+          # 下载 opkg-make-index 及其必要依赖 opkg.py
+          # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
+          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index"
+          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py"
+          
+          # 将它们安装到 /usr/local/bin，确保可以直接调用
+          sudo install -m0755 opkg-make-index /usr/local/bin/opkg-make-index
+          sudo install -m0644 opkg.py /usr/local/bin/opkg.py
+      
 
       # ===== 修补 build-ipk.sh 为 RK3566 =====
       - name: Patch build-ipk.sh for RK3566
