@@ -182,7 +182,6 @@ jobs:
 
       - name: Publish to release
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
         with:
           repo_token: ${{ github.token }}
           file: repo/**/*
