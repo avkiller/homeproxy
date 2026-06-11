@@ -38,7 +38,7 @@ jobs:
         run: |
           sudo -E rm -rf /var/lib/man-db/auto-update
           sudo -E apt-get update -qq
-          sudo -E apt-get install -y build-essential curl fakeroot libssl-dev lua5.1 meson ninja-build
+          sudo -E apt-get install -y build-essential curl fakeroot libssl-dev lua5.1 meson ninja-build opkg-utils
 
           pushd apk-tools
           meson setup build \
@@ -78,6 +78,17 @@ jobs:
           fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
           echo "APK_ASSET_NAME=$(ls *.apk)" >> $GITHUB_ENV
           echo "IPK_ASSET_NAME=$(ls *.ipk)" >> $GITHUB_ENV
+          popd
+          
+      - name: Generate repository index
+        run: |
+          mkdir -p repo/packages/${{ env.TARGET_ARCH }}
+          cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
+          cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
+
+          pushd repo/packages/${{ env.TARGET_ARCH }}
+          [ -f *.ipk ] && opkg-make-index . > Packages && gzip -kc Packages > Packages.gz
+          [ -f *.apk ] && apk mkndx --arch ${{ env.TARGET_ARCH }} -o packages.adb *.apk
           popd
 
       - name: Publishing APK files to GitHub Artifacts
