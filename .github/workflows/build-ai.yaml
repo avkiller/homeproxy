@@ -122,6 +122,8 @@ jobs:
         run: |
           sed -i 's/arch:all/arch:${{ env.TARGET_ARCH }}/g' .github/build-ipk.sh
           sed -i 's/Architecture: all/Architecture: ${{ env.TARGET_ARCH }}/g' .github/build-ipk.sh
+          sed -i 's/_all\.ipk/_${{ env.TARGET_ARCH }}.ipk/g' .github/build-ipk.sh
+          sed -i 's/_all\.apk/_${{ env.TARGET_ARCH }}.apk/g' .github/build-ipk.sh
 
       # ===== 构建包 =====
       - name: Build packages
