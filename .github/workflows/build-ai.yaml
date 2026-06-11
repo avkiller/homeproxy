@@ -30,14 +30,18 @@ jobs:
         uses: actions/cache@v4
         id: cache-po2lmo
         with:
-          path: po2lmo/modules/luci-base/src/po2lmo
+          path: /usr/local/bin/po2lmo
           key: po2lmo-${{ runner.os }}-rk3566-v1
 
       - name: Cache ipkg-build
         uses: actions/cache@v4
         id: cache-ipkg-build
         with:
-          path: /usr/local/bin/ipkg-build
+          path: |
+            /usr/local/bin/ipkg-build
+            /usr/local/bin/opkg-make-index
+            /usr/local/bin/opkg.py
+            /usr/local/bin/arfile.py
           key: ipkg-build-${{ runner.os }}-v1
 
       # ===== 依赖安装 =====
