@@ -159,10 +159,10 @@ jobs:
           if ls *.apk >/dev/null 2>&1; then
             echo "📦 Generating apk index..."
             apk mkndx \
-              --allow-untrusted \               
+              --allow-untrusted \
               --description "HomeProxy for RK3566" \
               --arch ${{ env.TARGET_ARCH }} \
-              -o packages.adb \
+              --output packages.adb \
               *.apk
           fi
           
