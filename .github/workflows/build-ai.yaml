@@ -180,7 +180,7 @@ jobs:
             opkg-make-index . > Packages
             gzip -kc Packages > Packages.gz
             echo "$OPKG_KEY" > private.sec
-            signify-openbsd -S -c "verify with hp_repo.pub" -m Packages.gz -s private.sec -x Packages.sig
+            signify-openbsd -S -m Packages.gz -s private.sec -x Packages.sig
             rm -f private.sec
             echo "✅ Packages.sig 签名成功生成！"
           fi
@@ -189,8 +189,7 @@ jobs:
           if ls *.apk >/dev/null 2>&1; then
             echo "📦 Generating apk index..."
             apk --keys-dir "${{ github.workspace }}/repo/apk-keys" mkndx \
-              --sign-key "${{ github.workspace }}/homeproxy-custom.pem" \
-              --allow-untrusted \
+              --sign-key "${{ github.workspace }}/homeproxy-custom.key" \
               --description "HomeProxy for RK3566" \
               --arch ${{ env.TARGET_ARCH }} \
               --output packages.adb \
