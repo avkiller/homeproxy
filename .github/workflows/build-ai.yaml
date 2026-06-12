@@ -1,4 +1,4 @@
-name: Build HomeProxy for RK3566
+name: HomeProxy AI build
 
 on:
   workflow_dispatch:
@@ -163,7 +163,7 @@ jobs:
             echo "📦 Generating opkg index..."
             opkg-make-index . > Packages
             gzip -kc Packages > Packages.gz
-            echo "$OPKG_KEY" > private.key
+            echo "$OPKG_KEY" > private.sec
             signify-openbsd -S -m Packages.gz -s private.sec -x Packages.sig
             rm -f private.sec
             echo "✅ Packages.sig 签名成功生成！"
