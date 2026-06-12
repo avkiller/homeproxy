@@ -194,3 +194,4 @@ jobs:
           file: repo/**/*
           file_glob: true
           tag: ${{ github.ref }}
+          overwrite: true
