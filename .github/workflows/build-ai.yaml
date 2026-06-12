@@ -218,6 +218,7 @@ jobs:
           mkdir -p dist/
           # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
           find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
+          # 拷贝公共证书
           cp "${{ github.workspace }}/homeproxy-custom.pem" dist/homeproxy-apk-public.pub
           echo "$OPKG_PUBLIC_KEY" > dist/homeproxy-ipk-public.pub
           # 自动生成index.html
