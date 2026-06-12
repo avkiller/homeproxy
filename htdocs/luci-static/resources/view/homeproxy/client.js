@@ -1505,22 +1505,22 @@ return view.extend({
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends('homeproxy.config.ipv6_support', '1');
 		/* WAN IP policy end */
-    	/* Clash settings start */
+		/* Clash settings start */
 		ss.tab('clash', _('Clash Settings'));
 		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
-    	so.default = '1'
+		so.default = '1'
 		so.rmempty = false;
-    	so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
-    	so.default = '192.168.3.2:9090'
-    	so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
-    	so.default = 'dashboard'
-    	so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
-    	so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
-    	so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
-    	so.default = 'direct-out'
-    	so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash dashboard Download url detour'));
-    	so.default = 'rule'
-        /* Clash settings end */
+		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
+		so.default = '192.168.3.2:9090'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
+		so.default = 'dashboard'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
+		so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
+		so.default = 'direct-out'
+		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash dashboard Download url detour'));
+		so.default = 'rule'
+		/* Clash settings end */
 
 		/* Proxy domain list start */
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
