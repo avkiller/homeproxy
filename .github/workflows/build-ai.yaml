@@ -177,10 +177,10 @@ jobs:
           # 生成 opkg 索引
           if ls *.ipk >/dev/null 2>&1; then
             echo "📦 Generating opkg index..."
+            echo "$OPKG_KEY" > private.sec
             opkg-make-index . > Packages
             signify-openbsd -S -c "private key e6089a2eccd37d83" -m Packages -s private.sec -x Packages.sig
             gzip -kc Packages > Packages.gz
-            echo "$OPKG_KEY" > private.sec
             # signify-openbsd -S -c "public key e6089a2eccd37d83" -m Packages.gz -s private.sec -x Packages.sig
             rm -f private.sec
             echo "✅ Packages.sig 签名成功生成！"
