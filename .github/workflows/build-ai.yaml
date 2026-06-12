@@ -178,9 +178,10 @@ jobs:
           if ls *.ipk >/dev/null 2>&1; then
             echo "📦 Generating opkg index..."
             opkg-make-index . > Packages
+            signify-openbsd -S -c "private key e6089a2eccd37d83" -m Packages -s private.sec -x Packages.sig
             gzip -kc Packages > Packages.gz
             echo "$OPKG_KEY" > private.sec
-            signify-openbsd -S -m Packages.gz -s private.sec -x Packages.sig
+            # signify-openbsd -S -c "public key e6089a2eccd37d83" -m Packages.gz -s private.sec -x Packages.sig
             rm -f private.sec
             echo "✅ Packages.sig 签名成功生成！"
           fi
@@ -213,7 +214,7 @@ jobs:
         run: |
           mkdir -p dist/
           # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
-          find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.sig" \) -exec cp {} dist/ \;
+          find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
           echo "📂 准备上传的文件列表："
           ls -la dist/
 
