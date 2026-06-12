@@ -46,7 +46,7 @@ const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_main
 
 let wan_dns = ubus.call('network.interface', 'status', {'interface': 'wan'})?.['dns-server']?.[0];
 if (!wan_dns)
-	wan_dns = (routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '223.5.5.5';
+	wan_dns = (routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '192.168.3.106';
 
 const dns_port = uci.get(uciconfig, uciinfra, 'dns_port') || '5333';
 
@@ -966,7 +966,14 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 			path: RUN_DIR + '/cache.db',
 			store_rdrc: strToBool(cache_file_store_rdrc),
 			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
-		}
+		},
+        "clash_api": {
+            "external_controller": "192.168.3.2:9090",
+            "external_ui": "dashboard",
+            "external_ui_download_url": "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip",
+            "external_ui_download_detour": "direct-out",
+            "default_mode": "rule"
+        }
 	};
 }
 /* Experimental end */

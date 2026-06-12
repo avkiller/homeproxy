@@ -10,6 +10,7 @@ PKG_MGR="${1:-apk}"
 RELEASE_TYPE="${2:-snapshot}"
 
 export PKG_SOURCE_DATE_EPOCH="$(date "+%s")"
+export PKG_SOURCE_DATE_CURRENT="$(date "+%Y%m%d")"
 export SOURCE_DATE_EPOCH="$PKG_SOURCE_DATE_EPOCH"
 
 BASE_DIR="$(cd "$(dirname $0)"; pwd)"
@@ -23,7 +24,7 @@ PKG_NAME="$(get_mk_value "PKG_NAME")"
 if [ "$RELEASE_TYPE" == "release" ]; then
 	PKG_VERSION="$(get_mk_value "PKG_VERSION")"
 else
-	PKG_VERSION="$PKG_SOURCE_DATE_EPOCH~$(git rev-parse --short HEAD)"
+	PKG_VERSION="$PKG_SOURCE_DATE_CURRENT~$(git rev-parse --short HEAD)"
 fi
 
 TEMP_DIR="$(mktemp -d -p $BASE_DIR)"
