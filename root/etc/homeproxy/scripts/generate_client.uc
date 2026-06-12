@@ -750,7 +750,7 @@ if (!isEmpty(main_node)) {
 			});
 			urltest_nodes = [...urltest_nodes, ...filter(cfg.urltest_nodes, (l) => !~index(urltest_nodes, l))];
 		} 
-		else if (cfg.node === 'select') {
+		else if (cfg.node === 'selector') {
 			push(config.outbounds, {
 				type: 'selector',                     
 				tag: 'cfg-' + cfg['.name'] + '-out',   
@@ -970,27 +970,32 @@ if (!isEmpty(main_node)) {
 /* Routing rules end */
 
 /* Experimental start */
+config.experimental = {};
+const clash_api_enabled = uci.get(uciconfig, "control", 'clash_api_enabled') || '0';
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
+	config.experimental.cache_file = {
+		enabled: true,
+		path: RUN_DIR + '/cache.db',
+		store_rdrc: strToBool(cache_file_store_rdrc),
+		rdrc_timeout: strToTime(cache_file_rdrc_timeout),
+	};
+}
+
+if (strToBool(clash_api_enabled)) {
 	let clash_controller = uci.get(uciconfig, "control", "clash_controller") ?? "192.168.3.2:9090";
 	let clash_external_ui = uci.get(uciconfig, "control", "clash_external_ui") ?? "dashboard";
 	let clash_external_ui_download_url = uci.get(uciconfig, "control", "clash_external_ui_download_url") ?? "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip";
 	let clash_external_ui_download_detour = uci.get(uciconfig, "control", "clash_external_ui_download_detour") ?? "direct-out";
 	let clash_default_mode = uci.get(uciconfig, "control", "clash_default_mode") ?? "rule";
-	config.experimental = {
-		cache_file: {
-			enabled: true,
-			path: RUN_DIR + '/cache.db',
-			store_rdrc: strToBool(cache_file_store_rdrc),
-			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
-		},
-        "clash_api": {
-            "external_controller": clash_controller,
-            "external_ui": clash_external_ui,
-            "external_ui_download_url": clash_external_ui_download_url,
-            "external_ui_download_detour": clash_external_ui_download_detour,
-            "default_mode": clash_default_mode
-        }
-	};
+	
+	config.experimental.clash_api = {
+        "external_controller": clash_controller,
+        "external_ui": clash_external_ui,
+        "external_ui_download_url": clash_external_ui_download_url,
+        "external_ui_download_detour": clash_external_ui_download_detour,
+        "default_mode": clash_default_mode
+    };
+	
 }
 /* Experimental end */
 
