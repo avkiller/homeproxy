@@ -12,9 +12,9 @@ LUCI_DEPENDS:= \
 	+kmod-nft-tproxy \
 	+ucode-mod-digest
 
-PKG_NAME:=luci-app-homeproxy
+PKG_NAME:=luci-app-homeproxy-avkiller
 
-define Package/luci-app-homeproxy/conffiles
+define Package/luci-app-homeproxy-avkiller/conffiles
 /etc/config/homeproxy
 /etc/homeproxy/certs/
 /etc/homeproxy/ruleset/
