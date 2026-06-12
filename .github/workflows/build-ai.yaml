@@ -195,7 +195,7 @@ jobs:
               --arch ${{ env.TARGET_ARCH }} \
               --output packages.adb \
               *.apk
-            ${{ github.workspace }}/homeproxy-custom.key
+            sudo rm -f ${{ github.workspace }}/homeproxy-custom.key
           fi
           
           popd
