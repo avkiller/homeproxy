@@ -195,6 +195,7 @@ jobs:
               --arch ${{ env.TARGET_ARCH }} \
               --output packages.adb \
               *.apk
+            ${{ github.workspace }}/homeproxy-custom.key
           fi
           
           popd
@@ -215,6 +216,9 @@ jobs:
           mkdir -p dist/
           # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
           find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
+          tree --dirsfirst --sort name -P '*.apk|*.ipk' --prune --noreport -H "" -T "Homeproxy's Feed" --charset utf-8 -o dist/index.html public
+          sed -i '/<p class="VERSION">/,/<\/p>/d' dist/index.html
+          cp "${{ github.workspace }}/homeproxy-custom.pem" dist/homeproxy-public.pub
           echo "📂 准备上传的文件列表："
           ls -la dist/
 
