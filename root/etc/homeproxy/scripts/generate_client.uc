@@ -364,7 +364,7 @@ function get_outbound(cfg) {
 			const node = uci.get(uciconfig, cfg, 'node');
 			if (isEmpty(node))
 				die(sprintf("%s's node is missing, please check your configuration.", cfg));
-			else if (node === 'urltest')
+			else if (node === 'urltest'|| node === 'select')
 				return 'cfg-' + cfg + '-out';
 			else
 				return 'cfg-' + node + '-out';
@@ -749,7 +749,18 @@ if (!isEmpty(main_node)) {
 				interrupt_exist_connections: strToBool(cfg.urltest_interrupt_exist_connections)
 			});
 			urltest_nodes = [...urltest_nodes, ...filter(cfg.urltest_nodes, (l) => !~index(urltest_nodes, l))];
-		} else {
+		} 
+		else if (cfg.node === 'select') {
+			push(config.outbounds, {
+				type: 'selector',                     
+				tag: 'cfg-' + cfg['.name'] + '-out',   
+				outbounds: map(cfg.select_nodes, (k) => `cfg-${k}-out`), // 映射用户手工勾选/组合的候选节点
+				interrupt_exist_connections: false 
+			});
+			// 如果你后续需要对 select 里用到的节点做全局统一处理，也可以像上面一样做去重合并：
+			// select_nodes = [...select_nodes, ...filter(cfg.select_nodes, (l) => !~index(select_nodes, l))];
+		}
+		else {
 			const outbound = uci.get_all(uciconfig, cfg.node) || {};
 			if (outbound.type === 'wireguard') {
 				push(config.endpoints, generate_endpoint(outbound));
@@ -864,14 +875,14 @@ if (!isEmpty(main_node)) {
 			type: 'remote',
 			tag: 'geoip-cn',
 			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/1715173329/IPCIDR-CHINA@rule-set/cn.srs',
+			url: 'https://testingcf.jsdelivr.net/gh/avkiller/geoip@release/srs/cn.srs',
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {
 			type: 'remote',
 			tag: 'geosite-cn',
 			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-cn.srs',
+			url: 'https://testingcf.jsdelivr.net/gh/avkiller/geosite@sing/geo-lite/geosite/cn.srs',
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {

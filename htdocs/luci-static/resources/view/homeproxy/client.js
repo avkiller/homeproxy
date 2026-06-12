@@ -122,6 +122,7 @@ return view.extend({
 		o = s.taboption('routing', form.ListValue, 'main_node', _('Main node'));
 		o.value('nil', _('Disable'));
 		o.value('urltest', _('URLTest'));
+		o.value('select', _('Selector')); // 👈 基础支持：主节点允许选择手动选择组
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
 		o.default = 'nil';
@@ -147,10 +148,20 @@ return view.extend({
 		o.placeholder = '50';
 		o.depends('main_node', 'urltest');
 
+		// ==================== 主节点 Selector 额外选项控制 ====================
+		o = s.taboption('routing', hp.CBIStaticList, 'main_select_nodes', _('Select nodes'),
+			_('List of nodes to select manually.'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.depends('main_node', 'select');
+		o.rmempty = false;
+		// ==============================================================================
+
 		o = s.taboption('routing', form.ListValue, 'main_udp_node', _('Main UDP node'));
 		o.value('nil', _('Disable'));
 		o.value('same', _('Same as main node'));
 		o.value('urltest', _('URLTest'));
+		o.value('select', _('Selector')); // 👈 基础支持：UDP节点允许选择手动选择组
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
 		o.default = 'nil';
@@ -175,6 +186,15 @@ return view.extend({
 		o.datatype = 'uinteger';
 		o.placeholder = '50';
 		o.depends('main_udp_node', 'urltest');
+
+		// ==================== 纯增量插入：UDP节点 Selector 额外选项控制 ====================
+		o = s.taboption('routing', hp.CBIStaticList, 'main_udp_select_nodes', _('Select nodes'),
+			_('List of nodes to select manually.'));
+		for (let i in proxy_nodes)
+			o.value(i, proxy_nodes[i]);
+		o.depends('main_udp_node', 'select');
+		o.rmempty = false;
+		// ==============================================================================
 
 		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
 			_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
@@ -419,6 +439,7 @@ return view.extend({
 		so = ss.option(form.ListValue, 'node', _('Node'),
 			_('Outbound node'));
 		so.value('urltest', _('URLTest'));
+		so.value('select', _('Selector')); // 👈 策略组节点列表注入 Selector 类型支持
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'node');
@@ -441,6 +462,7 @@ return view.extend({
 			return this.super('load', section_id);
 		}
 		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': 'select', '!reverse': true}); // 👈 增量支持：使 select 分组能够正常复用域名解析器
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
@@ -448,13 +470,14 @@ return view.extend({
 		for (let i in hp.dns_strategy)
 			so.value(i, hp.dns_strategy[i]);
 		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': 'select', '!reverse': true}); // 👈 增量支持：使 select 分组能够正常复用域名策略
 		so.modalonly = true;
 
 		so = ss.option(widgets.DeviceSelect, 'bind_interface', _('Bind interface'),
 			_('The network interface to bind to.'));
 		so.multiple = false;
 		so.noaliases = true;
-		so.depends({'outbound': '', 'node': /^((?!urltest$).)+$/});
+		so.depends({'outbound': '', 'node': /^((?!urltest$)(?!select$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
@@ -482,6 +505,8 @@ return view.extend({
 							conflict = true;
 						else if (res.node === 'urltest' && res.urltest_nodes?.includes(node) && res['.name'] == value)
 							conflict = true;
+						else if (res.node === 'select' && res.select_nodes?.includes(node) && res['.name'] == value) // 👈 增量校验逻辑
+							conflict = true;
 					}
 				});
 				if (conflict)
@@ -490,8 +515,29 @@ return view.extend({
 
 			return true;
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': /^((?!urltest$)(?!select$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
 		so.editable = true;
+
+		// ==================== 自定义策略组内部 Selector ====================
+		so = ss.option(hp.CBIStaticList, 'select_nodes', _('Select nodes'),
+			_('List of nodes to select manually.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.depends('node', 'select');
+		so.validate = function(section_id) {
+			let value = this.section.formvalue(section_id, 'select_nodes');
+			if (section_id && !value.length)
+				return _('Expecting: %s').format(_('non-empty value'));
+
+			return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'select_interrupt_exist_connections', _('Interrupt existing connections'),
+			_('Interrupt existing connections when the selected outbound has changed.'));
+		so.depends('node', 'select');
+		so.modalonly = true;
+		// ====================================================================================
 
 		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
 			_('List of nodes to test.'));
