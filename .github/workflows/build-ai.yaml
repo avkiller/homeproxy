@@ -59,7 +59,8 @@ jobs:
             libssl-dev \
             lua5.1 \
             meson \
-            ninja-build
+            ninja-build \
+            signify-openbsd
 
       # ===== 构建 apk-tools =====
       - name: Checkout apk-tools
@@ -146,6 +147,8 @@ jobs:
 
       # ===== 生成仓库索引 =====
       - name: Generate repository index
+        env:
+          OPKG_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           mkdir -p repo/packages/${{ env.TARGET_ARCH }}
@@ -160,6 +163,10 @@ jobs:
             echo "📦 Generating opkg index..."
             opkg-make-index . > Packages
             gzip -kc Packages > Packages.gz
+            echo "$OPKG_KEY" > private.key
+            signify-openbsd -S -m Packages.gz -s private.key -x Packages.sig
+            rm -f private.key
+            echo "✅ Packages.sig 签名成功生成！"
           fi
           
           # 生成 apk 索引
