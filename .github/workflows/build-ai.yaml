@@ -164,8 +164,8 @@ jobs:
             opkg-make-index . > Packages
             gzip -kc Packages > Packages.gz
             echo "$OPKG_KEY" > private.key
-            signify-openbsd -S -m Packages.gz -s private.key -x Packages.sig
-            rm -f private.key
+            signify-openbsd -S -m Packages.gz -s private.sec -x Packages.sig
+            rm -f private.sec
             echo "✅ Packages.sig 签名成功生成！"
           fi
           
