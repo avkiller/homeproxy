@@ -971,6 +971,11 @@ if (!isEmpty(main_node)) {
 
 /* Experimental start */
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
+	let clash_controller = uci.get(uciconfig, "control", "clash_controller") ?? "192.168.3.2:9090";
+	let clash_external_ui = uci.get(uciconfig, "control", "clash_external_ui") ?? "dashboard";
+	let clash_external_ui_download_url = uci.get(uciconfig, "control", "clash_external_ui_download_url") ?? "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip";
+	let clash_external_ui_download_detour = uci.get(uciconfig, "control", "clash_external_ui_download_detour") ?? "direct-out";
+	let clash_default_mode = uci.get(uciconfig, "control", "clash_default_mode") ?? "rule";
 	config.experimental = {
 		cache_file: {
 			enabled: true,
@@ -979,11 +984,11 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
 		},
         "clash_api": {
-            "external_controller": "192.168.3.2:9090",
-            "external_ui": "dashboard",
-            "external_ui_download_url": "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip",
-            "external_ui_download_detour": "direct-out",
-            "default_mode": "rule"
+            "external_controller": clash_controller,
+            "external_ui": clash_external_ui,
+            "external_ui_download_url": clash_external_ui_download_url,
+            "external_ui_download_detour": clash_external_ui_download_detour,
+            "default_mode": clash_default_mode
         }
 	};
 }
