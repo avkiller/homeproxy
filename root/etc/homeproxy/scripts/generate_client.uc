@@ -364,7 +364,7 @@ function get_outbound(cfg) {
 			const node = uci.get(uciconfig, cfg, 'node');
 			if (isEmpty(node))
 				die(sprintf("%s's node is missing, please check your configuration.", cfg));
-			else if (node === 'urltest'|| node === 'select')
+			else if (node === 'urltest'|| node === 'selector')
 				return 'cfg-' + cfg + '-out';
 			else
 				return 'cfg-' + node + '-out';
