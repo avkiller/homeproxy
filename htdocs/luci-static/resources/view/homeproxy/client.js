@@ -455,7 +455,7 @@ return view.extend({
 			_('The network interface to bind to.'));
 		so.multiple = false;
 		so.noaliases = true;
-		so.depends({'outbound': '', 'node': /^((?!urltest$)(?!select$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
+		so.depends({'outbound': '', 'node': /^((?!urltest$)(?!selector$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
