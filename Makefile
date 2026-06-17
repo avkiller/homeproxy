@@ -14,7 +14,7 @@ LUCI_DEPENDS:= \
 
 PKG_NAME:=luci-app-homeproxy-avkiller
 
-define Package/luci-app-homeproxy-avkiller/conffiles
+define Package/luci-app-homeproxy/conffiles
 /etc/config/homeproxy
 /etc/homeproxy/certs/
 /etc/homeproxy/ruleset/
