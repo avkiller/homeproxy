@@ -50,6 +50,15 @@ EOF
 
 po2lmo "$PKG_DIR/po/zh_Hans/homeproxy.po" "$TEMP_PKG_DIR/usr/lib/lua/luci/i18n/homeproxy.zh-cn.lmo"
 
+# 默认设置中文
+cat > "$TEMP_PKG_DIR/etc/uci-defaults/$PKG_NAME-i18n" <<-EOF
+#!/bin/sh
+uci set luci.languages.zh_cn='简体中文 (Simplified Chinese)'
+uci commit luci
+exit 0
+EOF
+chmod 0755 "$TEMP_PKG_DIR/etc/uci-defaults/$PKG_NAME-i18n"
+
 if [ "$PKG_MGR" == "apk" ]; then
 	find "$TEMP_PKG_DIR" -type f,l -printf '/%P\n' | sort > "$TEMP_PKG_DIR/lib/apk/packages/$PKG_NAME.list"
 	echo "/etc/config/homeproxy" >> "$TEMP_PKG_DIR/lib/apk/packages/$PKG_NAME.conffiles"
