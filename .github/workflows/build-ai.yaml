@@ -202,8 +202,19 @@ jobs:
           set -euo pipefail
           mkdir -p repo/packages/${{ env.TARGET_ARCH }}
           mkdir -p repo/apk-keys
-          cp .github/{{ env.APK_ASSET_NAME }} .github/luci-homeproxy-avkiller_aarch64_generic.apk
-          cp .github/{{ env.IPK_ASSET_NAME }} .github/luci-homeproxy-avkiller_aarch64_generic.ipk
+          if [ -f ".github/APK_ASSET_NAME" ]; then
+            cp ".github/env.APK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.apk 2>/dev/null || true
+          else
+            echo "::error::APK not found: $APK_ASSET_NAME"
+            exit 1
+          fi
+
+          if [ -f ".github/$IPK_ASSET_NAME" ]; then
+            cp ".github/$IPK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.ipk 2>/dev/null || true
+          else
+            echo "::error::IPK not found: $IPK_ASSET_NAME"
+            exit 1
+          fi
           cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
           cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
 
