@@ -202,21 +202,22 @@ jobs:
           set -euo pipefail
           mkdir -p repo/packages/${{ env.TARGET_ARCH }}
           mkdir -p repo/apk-keys
-          # if [ -f ".github/APK_ASSET_NAME" ]; then
-          #   cp ".github/env.APK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.apk 2>/dev/null || true
-          # else
-          #   echo "::error::APK not found: $APK_ASSET_NAME"
-          #   exit 1
-          # fi
+          if [ -f ".github/$APK_ASSET_NAME" ]; then
+            cp ".github/$APK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.apk 2>/dev/null || true
+          else
+            echo "::error::APK not found: $APK_ASSET_NAME"
+            exit 1
+          fi
 
-          # if [ -f ".github/$IPK_ASSET_NAME" ]; then
-          #   cp ".github/$IPK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.ipk 2>/dev/null || true
-          # else
-          #   echo "::error::IPK not found: $IPK_ASSET_NAME"
-          #   exit 1
-          # fi
+          if [ -f ".github/$IPK_ASSET_NAME" ]; then
+            cp ".github/$IPK_ASSET_NAME" .github/luci-homeproxy-avkiller_aarch64_generic.ipk 2>/dev/null || true
+          else
+            echo "::error::IPK not found: $IPK_ASSET_NAME"
+            exit 1
+          fi
+          echo "显示当前目录的文件列表"
           find .github -type f
-          ls -al .github
+          # ls -al .github
           exit 1
           cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
           cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
