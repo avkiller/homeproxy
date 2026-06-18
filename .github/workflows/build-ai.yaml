@@ -135,6 +135,42 @@ jobs:
           sed -i 's/_all\.ipk/_${{ env.TARGET_ARCH }}.ipk/g' .github/build-ipk.sh
           sed -i 's/_all\.apk/_${{ env.TARGET_ARCH }}.apk/g' .github/build-ipk.sh
 
+      - name: Syntax check
+        run: |
+          echo "Checking shell scripts..."
+          sh -n install.sh
+
+          echo "Checking JavaScript files..."
+          node --check htdocs/luci-static/resources/homeproxy.js
+          node --check htdocs/luci-static/resources/view/homeproxy/client.js
+          node --check htdocs/luci-static/resources/view/homeproxy/node.js
+          node --check htdocs/luci-static/resources/view/homeproxy/backup.js
+
+          echo "Checking ucode scripts..."
+          # Check .uc files with Node.js (basic syntax only)
+          for uc_file in root/etc/homeproxy/scripts/*.uc; do
+            if [ -f "$uc_file" ]; then
+              echo "  Checking $uc_file..."
+              node --check --input-type=module < "$uc_file" || {
+                echo "ERROR: Syntax error in $uc_file"
+                exit 1
+              }
+            fi
+          done
+
+          # Check RPC file (luci.homeproxy) - convert top-level return for Node.js
+          for rpc_file in root/usr/share/rpcd/ucode/luci.homeproxy; do
+            if [ -f "$rpc_file" ]; then
+              echo "  Checking $rpc_file (RPC handler with top-level return workaround)..."
+              sed 's/^return /export default /' "$rpc_file" | node --check --input-type=module || {
+                echo "ERROR: Syntax error in $rpc_file"
+                exit 1
+              }
+            fi
+          done
+
+          echo "All syntax checks passed"
+
       # ===== 构建包 =====
       - name: Build packages
         env:
@@ -150,10 +186,11 @@ jobs:
           openssl pkey -in "${{ github.workspace }}/homeproxy-custom.key" -pubout -out "${{ github.workspace }}/homeproxy-custom.pem"
           pushd .github
           APK_SIGN_KEY="${{ github.workspace }}/homeproxy-custom.key" \
+            CUSTOM_PKG_NAME="luci-homeproxy-avkiller" \
             fakeroot bash build-ipk.sh apk "${{ github.event_name }}"
 
-       
-          fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
+          CUSTOM_PKG_NAME="luci-homeproxy-avkiller" \
+            fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
           echo "APK_ASSET_NAME=$(ls *.apk)" >> $GITHUB_ENV
           echo "IPK_ASSET_NAME=$(ls *.ipk)" >> $GITHUB_ENV
           popd
@@ -166,7 +203,8 @@ jobs:
           set -euo pipefail
           mkdir -p repo/packages/${{ env.TARGET_ARCH }}
           mkdir -p repo/apk-keys
-
+          cp .github/{{ env.APK_ASSET_NAME }} .github/luci-homeproxy-avkiller_aarch64_generic.apk
+          cp .github/{{ env.IPK_ASSET_NAME }} .github/luci-homeproxy-avkiller_aarch64_generic.ipk
           cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
           cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
 
