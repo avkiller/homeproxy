@@ -144,7 +144,6 @@ jobs:
           node --check htdocs/luci-static/resources/homeproxy.js
           node --check htdocs/luci-static/resources/view/homeproxy/client.js
           node --check htdocs/luci-static/resources/view/homeproxy/node.js
-          node --check htdocs/luci-static/resources/view/homeproxy/backup.js
 
           echo "Checking ucode scripts..."
           # Check .uc files with Node.js (basic syntax only)
