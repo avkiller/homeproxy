@@ -6,7 +6,8 @@
 SERVER_URL="http://192.168.3.106:5000/homeproxy"
 
 FILE_UPDATE="/etc/homeproxy/scripts/update_homeproxy.sh"
-FILE_UC="/etc/homeproxy/scripts/generate_client.uc"
+FILE_GENERATE_CLIENT="/etc/homeproxy/scripts/generate_client.uc"
+FILE_MIGRATE_CONFIG="/etc/homeproxy/scripts/migrate_config.uc"
 FILE_CLIENT_JS="/www/luci-static/resources/view/homeproxy/client.js"
 FILE_HOMEPROXY_JS="/www/luci-static/resources/homeproxy.js"
 
@@ -87,7 +88,12 @@ download_and_restore "$FILE_UPDATE" "${SERVER_URL}/update_homeproxy.sh"
 
 # 处理 generate_client.uc
 echo "-> 正在处理 generate_client.uc..."
-download_and_restore "$FILE_UC" "${SERVER_URL}/generate_client.uc"
+download_and_restore "$FILE_GENERATE_CLIENT" "${SERVER_URL}/generate_client.uc"
+
+echo "------------------------------------------"
+# 处理 migrate_config.uc
+echo "-> 正在处理 migrate_config.uc..."
+download_and_restore "$FILE_MIGRATE_CONFIG" "${SERVER_URL}/migrate_config.uc"
 
 echo "------------------------------------------"
 
