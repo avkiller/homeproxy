@@ -16,6 +16,7 @@
 		},
 		"write": {
 			"file": {
+				"/etc/homeproxy/scripts/update_subscriptions.uc": [ "exec" ],
 				"/tmp/homeproxy_certificate.tmp": [ "write" ]
 			},
 			"uci": [ "homeproxy" ]
