@@ -10,6 +10,7 @@ FILE_GENERATE_CLIENT="/etc/homeproxy/scripts/generate_client.uc"
 FILE_MIGRATE_CONFIG="/etc/homeproxy/scripts/migrate_config.uc"
 FILE_CLIENT_JS="/www/luci-static/resources/view/homeproxy/client.js"
 FILE_HOMEPROXY_JS="/www/luci-static/resources/homeproxy.js"
+FILE_UCODE_HOMEPROXY="/usr/share/rpcd/ucode/luci.homeproxy"
 
 # ====================================================================
 # 函数定义：支持不存在直接下载、存在则备份还原
@@ -109,6 +110,12 @@ download_and_restore "$FILE_CLIENT_JS" "${SERVER_URL}/client.js"
 
 echo "------------------------------------------"
 
+# 处理 ucode luci.homeproxy
+echo "-> 正在处理 ucode luci.homeproxy..."
+download_and_restore "$FILE_UCODE_HOMEPROXY" "${SERVER_URL}/luci.homeproxy"
+
+echo "------------------------------------------"
+
 # 3. 后续清理工作
 echo "-> 正在清理 LuCI 网页缓存..."
 rm -rf /tmp/luci-indexcache /tmp/luci-modulecache
@@ -124,3 +131,4 @@ fi
 echo "=========================================="
 echo "更新流程结束！"
 echo "=========================================="
+exit 0

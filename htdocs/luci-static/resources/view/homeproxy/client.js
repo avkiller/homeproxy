@@ -38,6 +38,14 @@ const callWriteDomainList = rpc.declare({
 	expect: { '': {} }
 });
 
+const callUpdateHomeProxy = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'homeproxy_update',
+	params: ['type'],
+	timeout: 60000,
+	expect: { '': {} }
+});
+
 function getServiceStatus() {
 	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
 		let isRunning = false;
@@ -57,6 +65,29 @@ function renderStatus(isRunning, version) {
 		renderHTML = spanTemp.format('red', _('HomeProxy'), version, _('NOT RUNNING'));
 
 	return renderHTML;
+}
+
+// 👈 新增：点击按钮后的更新homeproxy处理函数
+function handleUpdateHomeproxy(ev) {
+	let btn = ev.target;
+	btn.disabled = true;
+	btn.textContent = _('Updating...');
+
+	return L.resolveDefault(callUpdateHomeProxy('all'), {}).then((res) => {
+		console.log('HomeProxy update response:', res);
+		// 严格提取状态码
+		let statusCode = (res && typeof res === 'object') ? res.status : null;
+		if (statusCode === 0) {
+			alert(_('Homeproxy update successfully!'));
+		} else {
+			alert(_('Failed to update Homeproxy res. Exit code: ') + (statusCode ?? 'unknown'));
+		}
+	}).catch((err) => {
+		alert(_('Request failed: ') + err.message);
+	}).finally(() => {
+		btn.disabled = false;
+		btn.textContent = _('Updated HomeProxy');
+	});
 }
 
 let stubValidator = {
@@ -109,6 +140,14 @@ return view.extend({
 					view.innerHTML = renderStatus(res, features.version);
 				});
 			});
+			// 👈 精准修改：利用 Flex 布局将状态放在左侧，将“更新资源”按钮优雅地放在右侧
+			return E('div', { class: 'cbi-section', id: 'status_bar', style: 'display: flex; justify-content: space-between; align-items: center;' }, [
+					E('p', { id: 'service_status', style: 'margin: 0;' }, _('Collecting data...')),
+					E('button', {
+						class: 'cbi-button cbi-button-apply',
+						click: handleUpdateHomeproxy
+					}, [ _('Update HomeProxy') ])
+			]);
 
 			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
 					E('p', { id: 'service_status' }, _('Collecting data...'))
