@@ -26,7 +26,7 @@ jobs:
           # 循环下载，代码更整洁
           for file in opkg-make-index opkg.py arfile.py; do
             echo "Downloading $file..."
-            curl -v -fLO $RETRY_OPTS "$URL_BASE/$file" -o "$TARGET_DIR/$file"
+            curl -v -fL $RETRY_OPTS "$URL_BASE/$file" -o "$TARGET_DIR/$file"
           done
 
           # 直接修改目标目录下的权限
