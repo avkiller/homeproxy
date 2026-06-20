@@ -111,23 +111,25 @@ jobs:
           
           # 生成 opkg 索引
           if ls *.ipk >/dev/null 2>&1; then
+            # 下载安装需要的工具
+            TARGET_DIR="./opkg-script"
+            mkdir -p "$TARGET_DIR"
 
+            RETRY_OPTS="--retry 5 --retry-delay 2 --retry-max-time 60"
+            URL_BASE="https://git.yoctoproject.org/opkg-utils/plain"
 
-            # 安装需要的编译工具
-            # 下载 opkg-make-index 及其必要依赖 opkg.py
-            # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
-            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index"
-            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py"
-            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py"
-          
-            # 将它们安装到 /usr/local/bin，确保可以直接调用
-            sudo install -m0755 opkg-make-index /usr/local/bin/opkg-make-index
-            sudo install -m0644 opkg.py /usr/local/bin/opkg.py
-            sudo install -m0644 arfile.py /usr/local/bin/arfile.py
+            for file in opkg-make-index opkg.py arfile.py; do
+              echo "Downloading $file..."
+              curl -v -fL $RETRY_OPTS "$URL_BASE/$file" -o "$TARGET_DIR/$file"
+            done
+
+            chmod 0755 "$TARGET_DIR/opkg-make-index"
+            chmod 0644 "$TARGET_DIR/opkg.py"
+            chmod 0644 "$TARGET_DIR/arfile.py"
 
             echo "📦 Generating opkg index..."
             echo "$OPKG_KEY" > private.sec
-            opkg-make-index . > Packages
+            $TARGET_DIR/opkg-make-index . > Packages
             signify-openbsd -S -c "private key e6089a2eccd37d83" -m Packages -s private.sec -x Packages.sig
             gzip -kc Packages > Packages.gz
             # signify-openbsd -S -c "public key e6089a2eccd37d83" -m Packages.gz -s private.sec -x Packages.sig
