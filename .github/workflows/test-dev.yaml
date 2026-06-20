@@ -37,4 +37,5 @@ jobs:
           ls -al "$TARGET_DIR/"
 
           echo "📦 Generating opkg index..."
-          $TARGET_DIR/opkg-make-index . > Packages
+          $TARGET_DIR/opkg-make-index --help
+          ls -al
