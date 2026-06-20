@@ -67,16 +67,7 @@ jobs:
           curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
           sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
 
-          # 下载 opkg-make-index 及其必要依赖 opkg.py
-          # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index"
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py"
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py"
           
-          # 将它们安装到 /usr/local/bin，确保可以直接调用
-          sudo install -m0755 opkg-make-index /usr/local/bin/opkg-make-index
-          sudo install -m0644 opkg.py /usr/local/bin/opkg.py
-          sudo install -m0644 arfile.py /usr/local/bin/arfile.py
 
       - name: Build packages
         env:
@@ -87,7 +78,6 @@ jobs:
             echo "HOMEPROXY_APK_SIGN_KEY secret is required" >&2
             exit 1
           fi
-          umask 077
           printf '%s\n' "${HOMEPROXY_APK_SIGN_KEY}" > "${{ github.workspace }}/homeproxy-custom.key"
           openssl pkey -in "${{ github.workspace }}/homeproxy-custom.key" -pubout -out "${{ github.workspace }}/homeproxy-custom.pem"
           pushd .github
@@ -121,6 +111,20 @@ jobs:
           
           # 生成 opkg 索引
           if ls *.ipk >/dev/null 2>&1; then
+
+
+            # 安装需要的编译工具
+            # 下载 opkg-make-index 及其必要依赖 opkg.py
+            # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index"
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py"
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py"
+          
+            # 将它们安装到 /usr/local/bin，确保可以直接调用
+            sudo install -m0755 opkg-make-index /usr/local/bin/opkg-make-index
+            sudo install -m0644 opkg.py /usr/local/bin/opkg.py
+            sudo install -m0644 arfile.py /usr/local/bin/arfile.py
+
             echo "📦 Generating opkg index..."
             echo "$OPKG_KEY" > private.sec
             opkg-make-index . > Packages
