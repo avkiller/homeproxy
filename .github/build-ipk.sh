@@ -97,10 +97,20 @@ if [ "$PKG_MGR" == "apk" ]; then
 	done
 
 	refresh_luci='[ -n "${IPKG_INSTROOT}" ] || {
+	for file in /etc/homeproxy/scripts/*.apk-new; do
+		[ -e "$file" ] || continue
+		target="${file%.apk-new}"
+		mv -f "$file" "$target"
+		chmod 0755 "$target" 2>/dev/null || true
+	done
+
+	(
+	sleep 8
 	rm -f /tmp/luci-indexcache /tmp/luci-indexcache.* 2>/dev/null
-	rm -rf /tmp/luci-modulecache/ /tmp/luci-sessions/ 2>/dev/null
+	rm -rf /tmp/luci-modulecache/ 2>/dev/null
 	/etc/init.d/rpcd restart 2>/dev/null || killall -HUP rpcd 2>/dev/null
 	/etc/init.d/uhttpd restart 2>/dev/null || true
+	) >/dev/null 2>&1 </dev/null &
 	exit 0
 }'
 
@@ -151,7 +161,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--script "post-install:$TEMP_DIR/post-install" \
 		--script "post-upgrade:$TEMP_DIR/post-upgrade" \
 		--script "pre-deinstall:$TEMP_DIR/pre-deinstall" \
-		--info "depends:libc sing-box firewall4 kmod-nft-tproxy ucode-mod-digest" \
+		--info "depends:libc sing-box firewall4 kmod-nft-tproxy ucode-mod-digest ucode-mod-socket ucode-mod-uloop" \
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
 

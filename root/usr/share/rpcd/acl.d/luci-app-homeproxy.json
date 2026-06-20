@@ -19,6 +19,16 @@
 				"/etc/homeproxy/scripts/update_subscriptions.uc": [ "exec" ],
 				"/tmp/homeproxy_certificate.tmp": [ "write" ]
 			},
+			"ubus": {
+				"luci.homeproxy": [
+					"acllist_read",
+					"acllist_write",
+					"certificate_write",
+					"log_clean",
+					"resources_update",
+					"singbox_generator"
+				]
+			},
 			"uci": [ "homeproxy" ]
 		}
 	}
