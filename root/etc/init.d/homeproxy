@@ -46,7 +46,6 @@ delete_ip6_rules() {
 }
 
 start_service() {
-	mkdir -p "$RUN_DIR"
 	config_load "$CONF"
 
 	local routing_mode proxy_mode

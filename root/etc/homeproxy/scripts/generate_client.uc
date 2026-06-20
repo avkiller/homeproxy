@@ -14,7 +14,7 @@ import { cursor } from 'uci';
 
 import {
 	isEmpty, parseURL, strToBool, strToInt, strToTime,
-	removeBlankAttrs, validation, HP_DIR, RUN_DIR
+	removeBlankAttrs, validation, HP_DIR, RUN_DIR, shellQuote
 } from 'homeproxy';
 
 const ubus = connect();
@@ -999,5 +999,5 @@ if (strToBool(clash_api_enabled)) {
 }
 /* Experimental end */
 
-system('mkdir -p ' + RUN_DIR);
+system('mkdir -p ' + shellQuote(RUN_DIR));
 writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));
