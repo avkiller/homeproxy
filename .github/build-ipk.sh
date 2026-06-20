@@ -172,7 +172,7 @@ else
 	cat > "$TEMP_PKG_DIR/CONTROL/control" <<-EOF
 		Package: $PKG_NAME
 		Version: $PKG_VERSION
-		Depends: libc, sing-box, firewall4, kmod-nft-tproxy, ucode-mod-digest
+		Depends: libc, sing-box, firewall4, kmod-nft-tproxy, ucode-mod-digest, ucode-mod-socket, ucode-mod-uloop
 		Source: https://github.com/avkiller/homeproxy
 		Provides: $IPK_PROVIDES_TEXT
 		Replaces: $IPK_REPLACES_TEXT
