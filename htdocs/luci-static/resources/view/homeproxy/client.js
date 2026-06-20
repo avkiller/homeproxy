@@ -1603,7 +1603,7 @@ return view.extend({
 		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
 		so.load = function(/* ... */) {
 			return L.resolveDefault(callReadDomainList('direct_list')).then((res) => {
-				return res.content;
+				return (res && res.content) ? res.content : "";
 			}, {});
 		}
 		so.write = function(_section_id, value) {
