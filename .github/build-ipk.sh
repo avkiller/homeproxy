@@ -197,9 +197,14 @@ default_postinst $0 $@' > "$TEMP_PKG_DIR/CONTROL/postinst"
 	chmod 0755 "$TEMP_PKG_DIR/CONTROL/postinst"
 
 	echo -e "#!/bin/sh
-	logger -t HomeProxy-Install "postinst-pkg start"
-	[ -n "\${IPKG_INSTROOT}" ] || {
-	(. /etc/uci-defaults/$PKG_NAME) && rm -f /etc/uci-defaults/$PKG_NAME
+logger -t HomeProxy-Install "postinst-pkg start"
+[ -n \"\$IPKG_INSTROOT\" ] || {
+	logger -t HomeProxy-Install "postinst-pkg process start"
+	if [ -f /etc/uci-defaults/homeproxy-avkiller ]; then
+		(. /etc/uci-defaults/homeproxy-avkiller) \
+			&& rm -f /etc/uci-defaults/homeproxy-avkiller
+		logger -t HomeProxy-Install "rm homeproxy-avkiller"
+	fi
 	logger -t HomeProxy-Install "rm luci cache"
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/
@@ -207,8 +212,8 @@ default_postinst $0 $@' > "$TEMP_PKG_DIR/CONTROL/postinst"
 	/etc/init.d/rpcd reload 2>/dev/null
 	sleep 3
 	if ! ubus list | grep -q "luci.homeproxy"; then
-      logger -t HomeProxy-Install "RPC  reload fail retry Restart"
-      /etc/init.d/rpcd restart
+		logger -t HomeProxy-Install "RPC  reload fail retry Restart"
+		/etc/init.d/rpcd restart
     fi
 	exit 0
 }" > "$TEMP_PKG_DIR/CONTROL/postinst-pkg"
