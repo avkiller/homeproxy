@@ -161,7 +161,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--script "post-install:$TEMP_DIR/post-install" \
 		--script "post-upgrade:$TEMP_DIR/post-upgrade" \
 		--script "pre-deinstall:$TEMP_DIR/pre-deinstall" \
-		--info "depends:libc sing-box firewall4 kmod-nft-tproxy ucode-mod-digest ucode-mod-socket ucode-mod-uloop" \
+		--info "depends:libc sing-box firewall4 kmod-nft-tproxy ucode-mod-digest" \
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
 
@@ -172,7 +172,7 @@ else
 	cat > "$TEMP_PKG_DIR/CONTROL/control" <<-EOF
 		Package: $PKG_NAME
 		Version: $PKG_VERSION
-		Depends: libc, sing-box, firewall4, kmod-nft-tproxy, ucode-mod-digest, ucode-mod-socket, ucode-mod-uloop
+		Depends: libc, sing-box, firewall4, kmod-nft-tproxy, ucode-mod-digest
 		Source: https://github.com/avkiller/homeproxy
 		Provides: $IPK_PROVIDES_TEXT
 		Replaces: $IPK_REPLACES_TEXT
@@ -201,6 +201,11 @@ default_postinst $0 $@' > "$TEMP_PKG_DIR/CONTROL/postinst"
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/
 	/etc/init.d/rpcd reload 2>/dev/null
+	sleep 3
+	if ! ubus list | grep -q "luci.homeproxy"; then
+      logger -t HomeProxy-Install "RPC  reload fail retry Restart"
+      /etc/init.d/rpcd restart
+    fi
 	exit 0
 }" > "$TEMP_PKG_DIR/CONTROL/postinst-pkg"
 	chmod 0755 "$TEMP_PKG_DIR/CONTROL/postinst-pkg"
