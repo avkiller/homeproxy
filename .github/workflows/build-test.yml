@@ -1,13 +1,10 @@
-name: Build avkiller ipk for HomeProxy
+name: Build test ipk for HomeProxy
 
 on:
   workflow_dispatch:
   release:
     types:
       - published
-      
-env:
-  TARGET_ARCH: aarch64_cortex-a55
 
 jobs:
   build:
@@ -64,31 +61,15 @@ jobs:
 
           curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
           sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
-          
-      - name: Patch build-ipk.sh for RK3566
-        run: |
-          sed -i 's/arch:all/arch:aarch64_cortex-a55/g' .github/build-ipk.sh
-          sed -i 's/Architecture: all/Architecture: aarch64_cortex-a55/g' .github/build-ipk.sh
-
 
       - name: Build ipk file
         run: |
           pushd .github
           fakeroot bash build-ipk.sh apk "${{ github.event_name }}"
-          fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
+          CUSTOM_PKG_NAME="homeproxy-avkiller" \
+            fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
           echo "APK_ASSET_NAME=$(ls *.apk)" >> $GITHUB_ENV
           echo "IPK_ASSET_NAME=$(ls *.ipk)" >> $GITHUB_ENV
-          popd
-          
-      - name: Generate repository index
-        run: |
-          mkdir -p repo/packages/${{ env.TARGET_ARCH }}
-          cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
-          cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
-
-          pushd repo/packages/${{ env.TARGET_ARCH }}
-          [ -f *.ipk ] && opkg-make-index . > Packages && gzip -kc Packages > Packages.gz
-          [ -f *.apk ] && apk mkndx --arch ${{ env.TARGET_ARCH }} -o packages.adb *.apk
           popd
 
       - name: Publishing APK files to GitHub Artifacts
@@ -109,7 +90,7 @@ jobs:
 
       - name: Publishing to GitHub Releases
         uses: svenstaro/upload-release-action@v2
-        # if: github.event_name == 'release'
+        if: github.event_name == 'release'
         with:
           repo_token: ${{ github.token }}
           file: .github/luci-app-homeproxy_*.*
