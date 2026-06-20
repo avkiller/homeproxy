@@ -200,9 +200,8 @@ default_postinst $0 $@' > "$TEMP_PKG_DIR/CONTROL/postinst"
 logger -t HomeProxy-Install "postinst-pkg start"
 [ -n \"\$IPKG_INSTROOT\" ] || {
 	logger -t HomeProxy-Install "postinst-pkg process start"
-	if [ -f /etc/uci-defaults/homeproxy-avkiller ]; then
-		(. /etc/uci-defaults/homeproxy-avkiller) \
-			&& rm -f /etc/uci-defaults/homeproxy-avkiller
+	if [ -f /etc/uci-defaults/$PKG_NAME ]; then
+		(. /etc/uci-defaults/$PKG_NAME) && rm -f /etc/uci-defaults/$PKG_NAME
 		logger -t HomeProxy-Install "rm homeproxy-avkiller"
 	fi
 	logger -t HomeProxy-Install "rm luci cache"
