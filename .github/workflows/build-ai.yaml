@@ -6,7 +6,7 @@ on:
     types: [published]
 
 env:
-  TARGET_ARCH: All
+  TARGET_ARCH: all
   
 permissions:
       contents: write

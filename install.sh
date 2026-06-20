@@ -4,12 +4,12 @@ set -eu
 
 REPO="avkiller/homeproxy"
 PKG_NAME="luci-homeproxy-avkiller"
-ASSET="luci-homeproxy-avkiller_aarch64_generic.apk"
+ASSET="luci-homeproxy-avkiller_ALL.apk"
 TMP_APK="/tmp/$ASSET"
 URL="https://github.com/$REPO/releases/latest/download/$ASSET"
-KEY_NAME="homeproxy-ipk-public.pub"
+KEY_NAME="homeproxy-apk-public.pub"
 KEY_URL="https://github.com/$REPO/releases/latest/download/$KEY_NAME"
-KEY_FINGERPRINT="sha256:d2ff6213d65e20b71940bc779d6b82cc6986c8e7a7202f91d10769c6219051a9"
+KEY_FINGERPRINT="sha256:5ccf3a25b277b6c82969ee6a4a15e634baded819be88b14b90798f8ce2f3ab1c"
 REPO_LIST="/etc/apk/repositories.d/luci-homeproxy-avkiller.list"
 REPO_INDEX_URL="https://github.com/$REPO/releases/latest/download/Packages.adb"
 
