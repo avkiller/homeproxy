@@ -5,6 +5,11 @@ on:
   release:
     types:
       - published
+env:
+  TARGET_ARCH: all
+  
+permissions:
+      contents: write
 
 jobs:
   build:
@@ -160,50 +165,50 @@ jobs:
           path: .github/${{ env.IPK_ASSET_NAME }}
           archive: false
 
-      - name: Prepare Assets for Release
-        env:
-          OPKG_PUBLIC_KEY: ${{ secrets.OPKG_PUBLIC_KEY }}
-        run: |
-          mkdir -p dist/
-          # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
-          # 重命名一部分文件便于固定文件名
-          if [ -f ".github/$APK_ASSET_NAME" ]; then
-            cp ".github/$APK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.apk 2>/dev/null || true
-          else
-            echo "::error::APK not found: $APK_ASSET_NAME"
-            exit 1
-          fi
+      # - name: Prepare Assets for Release
+      #   env:
+      #     OPKG_PUBLIC_KEY: ${{ secrets.OPKG_PUBLIC_KEY }}
+      #   run: |
+      #     mkdir -p dist/
+      #     # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
+      #     # 重命名一部分文件便于固定文件名
+      #     if [ -f ".github/$APK_ASSET_NAME" ]; then
+      #       cp ".github/$APK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.apk 2>/dev/null || true
+      #     else
+      #       echo "::error::APK not found: $APK_ASSET_NAME"
+      #       exit 1
+      #     fi
 
-          if [ -f ".github/$IPK_ASSET_NAME" ]; then
-            cp ".github/$IPK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.ipk 2>/dev/null || true
-          else
-            echo "::error::IPK not found: $IPK_ASSET_NAME"
-            exit 1
-          fi
-          find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
-          # 拷贝公共证书
-          cp "${{ github.workspace }}/homeproxy-custom.pem" dist/homeproxy-apk-public.pub
-          echo "$OPKG_PUBLIC_KEY" > dist/homeproxy-ipk-public.pub
-          # 自动生成index.html
-          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Homeproxy Feed</title><style>body{font-family:sans-serif;padding:40px;background:#f4f5f7;}h1{color:#333;}ul{list-style:none;padding:0;}li{background:#fff;margin:8px 0;padding:12px 20px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.05);}a{color:#2f80ed;text-decoration:none;font-weight:bold;font-family:monospace;}a:hover{text-decoration:underline;}</style></head><body>' > dist/index.html
-          echo "<h1>📦 Homeproxy's Feed & APK 下载列表</h1>" >> dist/index.html
-          echo "<ul>" >> dist/index.html
-          # 生成超链接
-          for file in $(ls dist/); do
-            if [ "$file" != "index.html" ]; then
-              echo "<li><a href='./$file'>$file</a></li>" >> dist/index.html
-            fi
-          done
+      #     if [ -f ".github/$IPK_ASSET_NAME" ]; then
+      #       cp ".github/$IPK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.ipk 2>/dev/null || true
+      #     else
+      #       echo "::error::IPK not found: $IPK_ASSET_NAME"
+      #       exit 1
+      #     fi
+      #     find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
+      #     # 拷贝公共证书
+      #     cp "${{ github.workspace }}/homeproxy-custom.pem" dist/homeproxy-apk-public.pub
+      #     echo "$OPKG_PUBLIC_KEY" > dist/homeproxy-ipk-public.pub
+      #     # 自动生成index.html
+      #     echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Homeproxy Feed</title><style>body{font-family:sans-serif;padding:40px;background:#f4f5f7;}h1{color:#333;}ul{list-style:none;padding:0;}li{background:#fff;margin:8px 0;padding:12px 20px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.05);}a{color:#2f80ed;text-decoration:none;font-weight:bold;font-family:monospace;}a:hover{text-decoration:underline;}</style></head><body>' > dist/index.html
+      #     echo "<h1>📦 Homeproxy's Feed & APK 下载列表</h1>" >> dist/index.html
+      #     echo "<ul>" >> dist/index.html
+      #     # 生成超链接
+      #     for file in $(ls dist/); do
+      #       if [ "$file" != "index.html" ]; then
+      #         echo "<li><a href='./$file'>$file</a></li>" >> dist/index.html
+      #       fi
+      #     done
          
-          echo "</ul></body></html>" >> dist/index.html
-          echo "📂 准备上传的文件列表："
-          ls -la dist/
+      #     echo "</ul></body></html>" >> dist/index.html
+      #     echo "📂 准备上传的文件列表："
+      #     ls -la dist/
 
-      - name: Publish to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ github.token }}
-          file: dist/*
-          file_glob: true
-          tag: latest
-          overwrite: true
+      # - name: Publish to release
+      #   uses: svenstaro/upload-release-action@v2
+      #   with:
+      #     repo_token: ${{ github.token }}
+      #     file: dist/*
+      #     file_glob: true
+      #     tag: latest
+      #     overwrite: true
