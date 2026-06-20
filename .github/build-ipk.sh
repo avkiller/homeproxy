@@ -213,7 +213,7 @@ logger -t HomeProxy-Install "postinst-pkg start"
 	if ! ubus list | grep -q "luci.homeproxy"; then
 		logger -t HomeProxy-Install "RPC  reload fail retry Restart"
 		/etc/init.d/rpcd restart
-    fi
+	fi
 	exit 0
 }" > "$TEMP_PKG_DIR/CONTROL/postinst-pkg"
 	chmod 0755 "$TEMP_PKG_DIR/CONTROL/postinst-pkg"
