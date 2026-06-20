@@ -5,6 +5,11 @@ on:
   release:
     types:
       - published
+env:
+  TARGET_ARCH: all
+  
+permissions:
+      contents: write
 
 jobs:
   build:
@@ -35,7 +40,7 @@ jobs:
         run: |
           sudo -E rm -rf /var/lib/man-db/auto-update
           sudo -E apt-get update -qq
-          sudo -E apt-get install -y build-essential curl fakeroot libssl-dev lua5.1 meson ninja-build
+          sudo -E apt-get install -y build-essential curl fakeroot libssl-dev lua5.1 meson ninja-build signify-openbsd
 
           pushd apk-tools
           meson setup build \
@@ -62,15 +67,91 @@ jobs:
           curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
           sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
 
-      - name: Build ipk file
+          
+
+      - name: Build packages
+        env:
+          HOMEPROXY_APK_SIGN_KEY: ${{ secrets.HOMEPROXY_APK_SIGN_KEY }}
         run: |
+          set -euo pipefail
+          if [ -z "${HOMEPROXY_APK_SIGN_KEY}" ]; then
+            echo "HOMEPROXY_APK_SIGN_KEY secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "${HOMEPROXY_APK_SIGN_KEY}" > "${{ github.workspace }}/homeproxy-custom.key"
+          openssl pkey -in "${{ github.workspace }}/homeproxy-custom.key" -pubout -out "${{ github.workspace }}/homeproxy-custom.pem"
           pushd .github
-          fakeroot bash build-ipk.sh apk "${{ github.event_name }}"
+          APK_SIGN_KEY="${{ github.workspace }}/homeproxy-custom.key" \
+            CUSTOM_PKG_NAME="homeproxy-avkiller" \
+            fakeroot bash build-ipk.sh apk "${{ github.event_name }}"
+
           CUSTOM_PKG_NAME="homeproxy-avkiller" \
             fakeroot bash build-ipk.sh ipk "${{ github.event_name }}"
           echo "APK_ASSET_NAME=$(ls *.apk)" >> $GITHUB_ENV
           echo "IPK_ASSET_NAME=$(ls *.ipk)" >> $GITHUB_ENV
           popd
+
+      # ===== 生成仓库索引 =====
+      - name: Generate repository index
+        env:
+          OPKG_KEY: ${{ secrets.OPKG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p repo/packages/${{ env.TARGET_ARCH }}
+          mkdir -p repo/apk-keys
+          echo "显示当前目录的文件列表"
+          find .github -type f
+          # ls -al .github
+          cp .github/*.ipk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
+          cp .github/*.apk repo/packages/${{ env.TARGET_ARCH }}/ 2>/dev/null || true
+
+          cp "${{ github.workspace }}/homeproxy-custom.pem" repo/apk-keys
+
+          pushd repo/packages/${{ env.TARGET_ARCH }}
+          
+          # 生成 opkg 索引
+          if ls *.ipk >/dev/null 2>&1; then
+
+
+            # 安装需要的编译工具
+            # 下载 opkg-make-index 及其必要依赖 opkg.py
+            # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index"
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py"
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py"
+          
+            # 将它们安装到 /usr/local/bin，确保可以直接调用
+            sudo install -m0755 opkg-make-index /usr/local/bin/opkg-make-index
+            sudo install -m0644 opkg.py /usr/local/bin/opkg.py
+            sudo install -m0644 arfile.py /usr/local/bin/arfile.py
+
+            echo "📦 Generating opkg index..."
+            echo "$OPKG_KEY" > private.sec
+            opkg-make-index . > Packages
+            signify-openbsd -S -c "private key e6089a2eccd37d83" -m Packages -s private.sec -x Packages.sig
+            gzip -kc Packages > Packages.gz
+            # signify-openbsd -S -c "public key e6089a2eccd37d83" -m Packages.gz -s private.sec -x Packages.sig
+            rm -f private.sec
+            echo "✅ Packages.sig 签名成功生成！"
+          fi
+          
+          # 生成 apk 索引
+          if ls *.apk >/dev/null 2>&1; then
+            echo "📦 Generating apk index..."
+            apk --keys-dir "${{ github.workspace }}/repo/apk-keys" mkndx \
+              --sign-key "${{ github.workspace }}/homeproxy-custom.key" \
+              --description "HomeProxy for avkiller" \
+              --arch ${{ env.TARGET_ARCH }} \
+              --output packages.adb \
+              *.apk
+            sudo rm -f ${{ github.workspace }}/homeproxy-custom.key
+          fi
+          
+          popd
+
+          echo "✅ Repository structure:"
+          find repo -type f | sort
+
 
       - name: Publishing APK files to GitHub Artifacts
         uses: actions/upload-artifact@v7
@@ -88,11 +169,58 @@ jobs:
           path: .github/${{ env.IPK_ASSET_NAME }}
           archive: false
 
-      - name: Publishing to GitHub Releases
+      - name: Prepare Assets for Release
+        env:
+          OPKG_PUBLIC_KEY: ${{ secrets.OPKG_PUBLIC_KEY }}
+        run: |
+          mkdir -p dist/
+          # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
+          # 重命名一部分文件便于固定文件名
+          if [ -f ".github/$APK_ASSET_NAME" ]; then
+            cp ".github/$APK_ASSET_NAME" dist/homeproxy-avkiller_${{ env.TARGET_ARCH }}.apk 2>/dev/null || true
+          else
+            echo "::error::APK not found: $APK_ASSET_NAME"
+            exit 1
+          fi
+
+          if [ -f ".github/$IPK_ASSET_NAME" ]; then
+            cp ".github/$IPK_ASSET_NAME" dist/homeproxy-avkiller_${{ env.TARGET_ARCH }}.ipk 2>/dev/null || true
+          else
+            echo "::error::IPK not found: $IPK_ASSET_NAME"
+            exit 1
+          fi
+          find repo/ -type f \( -name "*.ipk" -o -name "*.apk" -o -name "*.gz" -o -name "*.adb" -o -name "*.sig" \) -exec cp {} dist/ \;
+          # 拷贝公共证书
+          cp "${{ github.workspace }}/homeproxy-custom.pem" dist/homeproxy-apk-public.pub
+          echo "$OPKG_PUBLIC_KEY" > dist/homeproxy-ipk-public.pub
+          # 自动生成index.html
+          echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Homeproxy Feed</title><style>body{font-family:sans-serif;padding:40px;background:#f4f5f7;}h1{color:#333;}ul{list-style:none;padding:0;}li{background:#fff;margin:8px 0;padding:12px 20px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.05);}a{color:#2f80ed;text-decoration:none;font-weight:bold;font-family:monospace;}a:hover{text-decoration:underline;}</style></head><body>' > dist/index.html
+          echo "<h1>📦 Homeproxy's Feed & APK 下载列表</h1>" >> dist/index.html
+          echo "<ul>" >> dist/index.html
+          # 生成超链接
+          for file in $(ls dist/); do
+            if [ "$file" != "index.html" ]; then
+              echo "<li><a href='./$file'>$file</a></li>" >> dist/index.html
+            fi
+          done
+         
+          echo "</ul></body></html>" >> dist/index.html
+          echo "📂 准备上传的文件列表："
+          ls -la dist/
+
+       - name: Publish to release
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
         with:
           repo_token: ${{ github.token }}
-          file: .github/luci-app-homeproxy_*.*
+          file: dist/*
           file_glob: true
-          tag: ${{ github.ref }}
+          tag: latest
+          overwrite: true
+
+      - name: feed
+        uses: cloudflare/wrangler-action@v4.0.0
+        with:
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy dist --project-name=homeproxy
+
