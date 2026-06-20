@@ -1,0 +1,41 @@
+name: test dev
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source tree
+        uses: actions/checkout@v6
+      # ===== 生成仓库索引 =====
+      - name: Generate repository index
+        run: |
+          set -euo pipefail
+          mkdir -p repo/packages/${{ env.TARGET_ARCH }}
+          mkdir -p opkg-script
+
+          # 生成 opkg 索引
+          if ls *.sh >/dev/null 2>&1; then
+
+            # 安装需要的编译工具
+            # 下载 opkg-make-index 及其必要依赖 opkg.py
+            # 注意：这两个文件必须在同一个目录下，否则 opkg-make-index 无法运行
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index" -o ./opkg-script/opkg-make-index
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py" -o ./opkg-script/opkg.py
+            curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py" -o ./opkg-script/arfile.py
+          
+            # 将它们安装到 /usr/local/bin，确保可以直接调用
+            chmod 0755 ./opkg-script/opkg-make-index
+            chmod 0644 ./opkg-script/opkg.py
+            chmod 0644 ./opkg-script/arfile.py
+
+            ls -al  ./opkg-script/
+
+            echo "📦 Generating opkg index..."
+            ./opkg-script/opkg-make-index . > Packages
