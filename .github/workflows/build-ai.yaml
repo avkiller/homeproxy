@@ -6,7 +6,7 @@ on:
     types: [published]
 
 env:
-  TARGET_ARCH: aarch64_generic
+  TARGET_ARCH: All
   
 permissions:
       contents: write
@@ -129,6 +129,7 @@ jobs:
 
       # ===== 修补 build-ipk.sh 为 RK3566 =====
       - name: Patch build-ipk.sh for RK3566
+        if: false
         run: |
           sed -i 's/arch:all/arch:${{ env.TARGET_ARCH }}/g' .github/build-ipk.sh
           sed -i 's/Architecture: all/Architecture: ${{ env.TARGET_ARCH }}/g' .github/build-ipk.sh
@@ -229,7 +230,7 @@ jobs:
             echo "📦 Generating apk index..."
             apk --keys-dir "${{ github.workspace }}/repo/apk-keys" mkndx \
               --sign-key "${{ github.workspace }}/homeproxy-custom.key" \
-              --description "HomeProxy for RK3566" \
+              --description "HomeProxy for avkiller" \
               --arch ${{ env.TARGET_ARCH }} \
               --output packages.adb \
               *.apk
@@ -257,14 +258,14 @@ jobs:
           # 寻找所有 ipk, apk, gz, sig 并强行复制到 dist/ 根目录下（去掉深层目录结构）
           # 重命名一部分文件便于固定文件名
           if [ -f ".github/$APK_ASSET_NAME" ]; then
-            cp ".github/$APK_ASSET_NAME" dist/luci-homeproxy-avkiller_aarch64_generic.apk 2>/dev/null || true
+            cp ".github/$APK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.apk 2>/dev/null || true
           else
             echo "::error::APK not found: $APK_ASSET_NAME"
             exit 1
           fi
 
           if [ -f ".github/$IPK_ASSET_NAME" ]; then
-            cp ".github/$IPK_ASSET_NAME" dist/luci-homeproxy-avkiller_aarch64_generic.ipk 2>/dev/null || true
+            cp ".github/$IPK_ASSET_NAME" dist/luci-homeproxy-avkiller_${{ env.TARGET_ARCH }}.ipk 2>/dev/null || true
           else
             echo "::error::IPK not found: $IPK_ASSET_NAME"
             exit 1
