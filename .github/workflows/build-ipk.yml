@@ -12,7 +12,7 @@ on:
       - 'Makefile'
       - '.github/**'
       - '!.github/ISSUE_TEMPLATE/**'
-
+  workflow_dispatch:
   pull_request:
     branches:
       - 'master'
