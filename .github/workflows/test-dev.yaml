@@ -17,19 +17,24 @@ jobs:
       - name: Generate repository index
         run: |
           set -euo pipefail
-          mkdir -p ./opkg-script
+          TARGET_DIR="./opkg-script"
+          mkdir -p "$TARGET_DIR"
 
           RETRY_OPTS="--retry 5 --retry-delay 2 --retry-max-time 60"
-          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index" -o ./opkg-script/opkg-make-index
-          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/opkg.py" -o ./opkg-script/opkg.py
-          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/arfile.py" -o ./opkg-script/arfile.py
-          
-          # 将它们安装到 /usr/local/bin，确保可以直接调用
-          chmod 0755 ./opkg-script/opkg-make-index
-          chmod 0644 ./opkg-script/opkg.py
-          chmod 0644 ./opkg-script/arfile.py
+          URL_BASE="https://git.yoctoproject.org/opkg-utils/plain"
 
-          ls -al  ./opkg-script/
+          # 循环下载，代码更整洁
+          for file in opkg-make-index opkg.py arfile.py; do
+            echo "Downloading $file..."
+            curl -v -fLO $RETRY_OPTS "$URL_BASE/$file" -o "$TARGET_DIR/$file"
+          done
+
+          # 直接修改目标目录下的权限
+          chmod 0755 "$TARGET_DIR/opkg-make-index"
+          chmod 0644 "$TARGET_DIR/opkg.py"
+          chmod 0644 "$TARGET_DIR/arfile.py"
+
+          ls -al "$TARGET_DIR/"
 
           echo "📦 Generating opkg index..."
-          ./opkg-script/opkg-make-index . > Packages
+          $TARGET_DIR/opkg-make-index . > Packages
