@@ -208,7 +208,7 @@ jobs:
           echo "📂 准备上传的文件列表："
           ls -la dist/
 
-       - name: Publish to release
+      - name: Publish to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ github.token }}
