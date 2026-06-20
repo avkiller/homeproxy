@@ -196,10 +196,24 @@ else
 default_postinst $0 $@' > "$TEMP_PKG_DIR/CONTROL/postinst"
 	chmod 0755 "$TEMP_PKG_DIR/CONTROL/postinst"
 
-	echo -e "[ -n "\${IPKG_INSTROOT}" ] || {
-	(. /etc/uci-defaults/$PKG_NAME) && rm -f /etc/uci-defaults/$PKG_NAME
+	echo -e "#!/bin/sh
+	# 开启调试模式，记录每一行执行过程
+    set -x
+    # 将脚本所有的输出（包括错误）重定向到临时文件，方便排查
+    exec > /tmp/homeproxy_debug.log 2>&1
+	echo "--- 开始执行 postinst-pkg ---"
+	echo "DEBUG: IPKG_INSTROOT is [$IPKG_INSTROOT]"
+	[ -n "\${IPKG_INSTROOT}" ] || {
+	if [ -f "/etc/uci-defaults/'$PKG_NAME'" ]; then
+        (. /etc/uci-defaults/'$PKG_NAME') && rm -f /etc/uci-defaults/'$PKG_NAME'
+        echo "DEBUG: uci-defaults 执行并删除完成"
+    else
+        echo "DEBUG: 未找到 /etc/uci-defaults/'$PKG_NAME'"
+    fi
+	echo "DEBUG: 清理缓存中..."
 	rm -f /tmp/luci-indexcache
 	rm -rf /tmp/luci-modulecache/
+	echo "DEBUG: 正在执行 rpcd reload..."
 	/etc/init.d/rpcd reload 2>/dev/null
 	sleep 3
 	if ! ubus list | grep -q "luci.homeproxy"; then
