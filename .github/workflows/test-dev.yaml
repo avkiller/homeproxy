@@ -17,10 +17,12 @@ jobs:
       - name: Generate repository index
         run: |
           set -euo pipefail
-          mkdir -p opkg-script
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index" -o ./opkg-script/opkg-make-index
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/opkg.py" -o ./opkg-script/opkg.py
-          curl -fLO "https://git.yoctoproject.org/opkg-utils/plain/arfile.py" -o ./opkg-script/arfile.py
+          mkdir -p ./opkg-script
+
+          RETRY_OPTS="--retry 5 --retry-delay 2 --retry-max-time 60"
+          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/opkg-make-index" -o ./opkg-script/opkg-make-index
+          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/opkg.py" -o ./opkg-script/opkg.py
+          curl -v -fLO $RETRY_OPTS "https://git.yoctoproject.org/opkg-utils/plain/arfile.py" -o ./opkg-script/arfile.py
           
           # 将它们安装到 /usr/local/bin，确保可以直接调用
           chmod 0755 ./opkg-script/opkg-make-index
