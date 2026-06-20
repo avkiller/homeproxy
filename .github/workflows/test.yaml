@@ -208,11 +208,19 @@ jobs:
           echo "📂 准备上传的文件列表："
           ls -la dist/
 
-      # - name: Publish to release
-      #   uses: svenstaro/upload-release-action@v2
-      #   with:
-      #     repo_token: ${{ github.token }}
-      #     file: dist/*
-      #     file_glob: true
-      #     tag: latest
-      #     overwrite: true
+       - name: Publish to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ github.token }}
+          file: dist/*
+          file_glob: true
+          tag: latest
+          overwrite: true
+
+      - name: feed
+        uses: cloudflare/wrangler-action@v4.0.0
+        with:
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deploy dist --project-name=homeproxy
+
