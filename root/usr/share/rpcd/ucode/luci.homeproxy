@@ -163,7 +163,7 @@ const methods = {
 			const type = req.args?.type;
 			let result = {};
 
-			const fd = popen('/usr/bin/sing-box generate ' + type + ` ${req.args?.params || ''}`);
+			const fd = popen(`/usr/bin/sing-box generate ${type} ${shellquote(req.args?.params || '')}`);
 			if (fd) {
 				let ech_cfg_set = false;
 				let ech_key_set = false;
@@ -245,6 +245,17 @@ const methods = {
 				const type = shellquote(req.args?.type);
 				const exit_code = system(`${HP_DIR}/scripts/update_resources.sh ${type}`);
 				return { status: exit_code };
+			} else
+				return { status: 255, error: 'illegal type' };
+		}
+	},
+	homeproxy_update: {
+		args: { type: 'type' },
+		call: function(req) {
+			if (req.args?.type) {
+				const type = shellquote(req.args?.type);
+				const exit_code = system(`${HP_DIR}/scripts/update_homeproxy.sh ${type} >/dev/null 2>&1`);
+				return { status: int(exit_code) };
 			} else
 				return { status: 255, error: 'illegal type' };
 		}

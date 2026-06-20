@@ -38,6 +38,14 @@ const callWriteDomainList = rpc.declare({
 	expect: { '': {} }
 });
 
+const callUpdateHomeProxy = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'homeproxy_update',
+	params: ['type'],
+	timeout: 60000,
+	expect: { '': {} }
+});
+
 function getServiceStatus() {
 	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
 		let isRunning = false;
@@ -57,6 +65,29 @@ function renderStatus(isRunning, version) {
 		renderHTML = spanTemp.format('red', _('HomeProxy'), version, _('NOT RUNNING'));
 
 	return renderHTML;
+}
+
+// 👈 新增：点击按钮后的更新homeproxy处理函数
+function handleUpdateHomeproxy(ev) {
+	let btn = ev.target;
+	btn.disabled = true;
+	btn.textContent = _('Updating...');
+
+	return L.resolveDefault(callUpdateHomeProxy('all'), {}).then((res) => {
+		console.log('HomeProxy update response:', res);
+		// 严格提取状态码
+		let statusCode = (res && typeof res === 'object') ? res.status : null;
+		if (statusCode === 0) {
+			alert(_('Homeproxy update successfully!'));
+		} else {
+			alert(_('Failed to update Homeproxy res. Exit code: ') + (statusCode ?? 'unknown'));
+		}
+	}).catch((err) => {
+		alert(_('Request failed: ') + err.message);
+	}).finally(() => {
+		btn.disabled = false;
+		btn.textContent = _('Updated HomeProxy');
+	});
 }
 
 let stubValidator = {
@@ -109,6 +140,14 @@ return view.extend({
 					view.innerHTML = renderStatus(res, features.version);
 				});
 			});
+			// 👈 精准修改：利用 Flex 布局将状态放在左侧，将“更新资源”按钮优雅地放在右侧
+			return E('div', { class: 'cbi-section', id: 'status_bar', style: 'display: flex; justify-content: space-between; align-items: center;' }, [
+					E('p', { id: 'service_status', style: 'margin: 0;' }, _('Collecting data...')),
+					E('button', {
+						class: 'cbi-button cbi-button-apply',
+						click: handleUpdateHomeproxy
+					}, [ _('Update HomeProxy') ])
+			]);
 
 			return E('div', { class: 'cbi-section', id: 'status_bar' }, [
 					E('p', { id: 'service_status' }, _('Collecting data...'))
@@ -419,6 +458,7 @@ return view.extend({
 		so = ss.option(form.ListValue, 'node', _('Node'),
 			_('Outbound node'));
 		so.value('urltest', _('URLTest'));
+		so.value('selector', _('Selector')); // 👈 策略组节点列表注入 Selector 类型支持
 		for (let i in proxy_nodes)
 			so.value(i, proxy_nodes[i]);
 		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'routing_node', 'node');
@@ -454,7 +494,7 @@ return view.extend({
 			_('The network interface to bind to.'));
 		so.multiple = false;
 		so.noaliases = true;
-		so.depends({'outbound': '', 'node': /^((?!urltest$).)+$/});
+		so.depends({'outbound': '', 'node': /^((?!urltest$)(?!selector$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
@@ -482,6 +522,8 @@ return view.extend({
 							conflict = true;
 						else if (res.node === 'urltest' && res.urltest_nodes?.includes(node) && res['.name'] == value)
 							conflict = true;
+						else if (res.node === 'selector' && res.select_nodes?.includes(node) && res['.name'] == value) // 👈 增量校验逻辑
+							conflict = true;
 					}
 				});
 				if (conflict)
@@ -490,8 +532,33 @@ return view.extend({
 
 			return true;
 		}
-		so.depends({'node': 'urltest', '!reverse': true});
+		so.depends({'node': /^((?!urltest$)(?!selector$)).+$/}); // 👈 精准修改：正则排除 urltest 和 select 两种特殊节点组
 		so.editable = true;
+
+		// ==================== 自定义策略组内部 Selector ====================
+		so = ss.option(hp.CBIStaticList, 'select_nodes', _('Select nodes'),
+			_('List of nodes to select manually.'));
+		for (let i in proxy_nodes)
+			so.value(i, proxy_nodes[i]);
+		so.depends('node', 'selector');
+		so.validate = function(section_id) {
+
+    		let value = this.section.formvalue(section_id, 'select_nodes');
+            if (section_id) {
+              let clean_value = Array.isArray(value) ? value : (value ? [value] : []);
+              if (clean_value.length === 0) {
+                return _('Expecting: %s').format(_('non-empty value'));
+              }
+            }
+            return true;
+		}
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'select_interrupt_exist_connections', _('Interrupt existing connections'),
+			_('Interrupt existing connections when the selected outbound has changed.'));
+		so.depends('node', 'selector');
+		so.modalonly = true;
+		// ====================================================================================
 
 		so = ss.option(hp.CBIStaticList, 'urltest_nodes', _('URLTest nodes'),
 			_('List of nodes to test.'));
@@ -1477,6 +1544,22 @@ return view.extend({
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends('homeproxy.config.ipv6_support', '1');
 		/* WAN IP policy end */
+		/* Clash settings start */
+		ss.tab('clash', _('Clash Settings'));
+		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
+		so.default = '1'
+		so.rmempty = false;
+		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
+		so.default = '192.168.3.2:9090'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
+		so.default = 'dashboard'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
+		so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
+		so.default = 'direct-out'
+		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash dashboard Download url detour'));
+		so.default = 'rule'
+		/* Clash settings end */
 
 		/* Proxy domain list start */
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
@@ -1488,7 +1571,7 @@ return view.extend({
 		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
 		so.load = function(/* ... */) {
 			return L.resolveDefault(callReadDomainList('proxy_list')).then((res) => {
-				return res.content;
+				return (res && res.content) ? res.content : "";
 			}, {});
 		}
 		so.write = function(_section_id, value) {
@@ -1520,7 +1603,7 @@ return view.extend({
 		so.depends({'homeproxy.config.routing_mode': 'custom', '!reverse': true});
 		so.load = function(/* ... */) {
 			return L.resolveDefault(callReadDomainList('direct_list')).then((res) => {
-				return res.content;
+				return (res && res.content) ? res.content : "";
 			}, {});
 		}
 		so.write = function(_section_id, value) {

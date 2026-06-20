@@ -12,7 +12,7 @@ import { cursor } from 'uci';
 
 import {
 	isEmpty, strToBool, strToInt, strToTime,
-	removeBlankAttrs, HP_DIR, RUN_DIR
+	removeBlankAttrs, HP_DIR, RUN_DIR, shellQuote
 } from 'homeproxy';
 
 /* UCI config start */
@@ -181,5 +181,5 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 if (length(config.inbounds) === 0)
 	exit(1);
 
-system('mkdir -p ' + RUN_DIR);
+system('mkdir -p ' + shellQuote(RUN_DIR));
 writefile(RUN_DIR + '/sing-box-s.json', sprintf('%.J\n', removeBlankAttrs(config)));

@@ -1,0 +1,26 @@
+name: ubuntu lib test
+
+on:
+  workflow_dispatch:
+
+  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install Sign Tool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y signify-openbsd
+      - name: Verify usign Installation
+        id: check_usign
+        run: |
+          if ! command -v signify-openbsd &> /dev/null; then
+            echo "❌ 错误：当前的 GitHub Actions 宿主机/容器中没有安装 signify-openbsd 签名工具！"
+            exit 1
+          fi
+          echo "signify-openbsd 状态正常 信息如下："
+          signify-openbsd
+
+  

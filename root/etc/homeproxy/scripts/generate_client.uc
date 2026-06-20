@@ -14,7 +14,7 @@ import { cursor } from 'uci';
 
 import {
 	isEmpty, parseURL, strToBool, strToInt, strToTime,
-	removeBlankAttrs, validation, HP_DIR, RUN_DIR
+	removeBlankAttrs, validation, HP_DIR, RUN_DIR, shellQuote
 } from 'homeproxy';
 
 const ubus = connect();
@@ -46,7 +46,7 @@ const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_main
 
 let wan_dns = ubus.call('network.interface', 'status', {'interface': 'wan'})?.['dns-server']?.[0];
 if (!wan_dns)
-	wan_dns = (routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '223.5.5.5';
+	wan_dns = (routing_mode in ['proxy_mainland_china', 'global']) ? '8.8.8.8' : '192.168.3.106';
 
 const dns_port = uci.get(uciconfig, uciinfra, 'dns_port') || '5333';
 
@@ -364,7 +364,7 @@ function get_outbound(cfg) {
 			const node = uci.get(uciconfig, cfg, 'node');
 			if (isEmpty(node))
 				die(sprintf("%s's node is missing, please check your configuration.", cfg));
-			else if (node === 'urltest')
+			else if (node === 'urltest'|| node === 'selector')
 				return 'cfg-' + cfg + '-out';
 			else
 				return 'cfg-' + node + '-out';
@@ -749,7 +749,18 @@ if (!isEmpty(main_node)) {
 				interrupt_exist_connections: strToBool(cfg.urltest_interrupt_exist_connections)
 			});
 			urltest_nodes = [...urltest_nodes, ...filter(cfg.urltest_nodes, (l) => !~index(urltest_nodes, l))];
-		} else {
+		} 
+		else if (cfg.node === 'selector') {
+			push(config.outbounds, {
+				type: 'selector',                     
+				tag: 'cfg-' + cfg['.name'] + '-out',   
+				outbounds: map(cfg.select_nodes, (k) => `cfg-${k}-out`), // 映射用户手工勾选/组合的候选节点
+				interrupt_exist_connections: false 
+			});
+			// 如果你后续需要对 select 里用到的节点做全局统一处理，也可以像上面一样做去重合并：
+			// select_nodes = [...select_nodes, ...filter(cfg.select_nodes, (l) => !~index(select_nodes, l))];
+		}
+		else {
 			const outbound = uci.get_all(uciconfig, cfg.node) || {};
 			if (outbound.type === 'wireguard') {
 				push(config.endpoints, generate_endpoint(outbound));
@@ -864,14 +875,14 @@ if (!isEmpty(main_node)) {
 			type: 'remote',
 			tag: 'geoip-cn',
 			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/1715173329/IPCIDR-CHINA@rule-set/cn.srs',
+			url: 'https://testingcf.jsdelivr.net/gh/avkiller/geoip@release/srs/cn.srs',
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {
 			type: 'remote',
 			tag: 'geosite-cn',
 			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/1715173329/sing-geosite@rule-set-unstable/geosite-geolocation-cn.srs',
+			url: 'https://testingcf.jsdelivr.net/gh/avkiller/geosite@sing/geo-lite/geosite/cn.srs',
 			download_detour: 'main-out'
 		});
 		push(config.route.rule_set, {
@@ -959,17 +970,34 @@ if (!isEmpty(main_node)) {
 /* Routing rules end */
 
 /* Experimental start */
+config.experimental = {};
+const clash_api_enabled = uci.get(uciconfig, "control", 'clash_api_enabled') || '0';
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
-	config.experimental = {
-		cache_file: {
-			enabled: true,
-			path: RUN_DIR + '/cache.db',
-			store_rdrc: strToBool(cache_file_store_rdrc),
-			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
-		}
+	config.experimental.cache_file = {
+		enabled: true,
+		path: RUN_DIR + '/cache.db',
+		store_rdrc: strToBool(cache_file_store_rdrc),
+		rdrc_timeout: strToTime(cache_file_rdrc_timeout),
 	};
+}
+
+if (strToBool(clash_api_enabled)) {
+	let clash_controller = uci.get(uciconfig, "control", "clash_controller") ?? "192.168.3.2:9090";
+	let clash_external_ui = uci.get(uciconfig, "control", "clash_external_ui") ?? "dashboard";
+	let clash_external_ui_download_url = uci.get(uciconfig, "control", "clash_external_ui_download_url") ?? "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip";
+	let clash_external_ui_download_detour = uci.get(uciconfig, "control", "clash_external_ui_download_detour") ?? "direct-out";
+	let clash_default_mode = uci.get(uciconfig, "control", "clash_default_mode") ?? "rule";
+	
+	config.experimental.clash_api = {
+        "external_controller": clash_controller,
+        "external_ui": clash_external_ui,
+        "external_ui_download_url": clash_external_ui_download_url,
+        "external_ui_download_detour": clash_external_ui_download_detour,
+        "default_mode": clash_default_mode
+    };
+	
 }
 /* Experimental end */
 
-system('mkdir -p ' + RUN_DIR);
+system('mkdir -p ' + shellQuote(RUN_DIR));
 writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));

@@ -25,7 +25,8 @@ const uciinfra = 'infra',
       ucirouting = 'routing',
       uciroutingnode = 'routing_node',
       uciroutingrule = 'routing_rule',
-      uciserver = 'server';
+      uciserver = 'server',
+      ucicontrol = 'control';
 
 /* chinadns-ng has been removed */
 if (uci.get(uciconfig, uciinfra, 'china_dns_port'))
@@ -74,6 +75,21 @@ if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
+
+/* Clash API dashboard integration */
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_api_enabled')))
+	uci.set(uciconfig, ucicontrol, 'clash_api_enabled', '1');
+
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_controller')))
+	uci.set(uciconfig, ucicontrol, 'clash_controller', '192.168.3.2:9090');
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_external_ui')))
+	uci.set(uciconfig, ucicontrol, 'clash_external_ui', 'dashboard');
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_external_ui_download_url')))
+	uci.set(uciconfig, ucicontrol, 'clash_external_ui_download_url', 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip');
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_external_ui_download_detour')))
+	uci.set(uciconfig, ucicontrol, 'clash_external_ui_download_detour', 'direct-out');
+if (isEmpty(uci.get(uciconfig, ucicontrol, 'clash_default_mode')))
+	uci.set(uciconfig, ucicontrol, 'clash_default_mode', 'rule');
 
 /* empty value defaults to all ports now */
 if (uci.get(uciconfig, ucimain, 'routing_port') === 'all')
