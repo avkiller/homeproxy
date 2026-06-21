@@ -1547,7 +1547,7 @@ return view.extend({
 		/* Clash settings start */
 		ss.tab('clash', _('Clash Settings'));
 		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
-		so.default = '1'
+		so.default = '0'
 		so.rmempty = false;
 		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
 		so.default = '192.168.3.2:9090'
@@ -1560,6 +1560,15 @@ return view.extend({
 		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash dashboard Download url detour'));
 		so.default = 'rule'
 		/* Clash settings end */
+
+		/* Update Homeproxy files start */
+		ss.tab('updatehomeproxy', _('Update HomeProxy Settings'));
+		so = ss.taboption('updatehomeproxy', form.Flag, 'updatehomeproxy_enabled', _('Update Homeproxy Enable'));
+		so.default = '1'
+		so.rmempty = false;
+		so = ss.taboption('updatehomeproxy', form.Value, 'updatehomeproxy_servers_url', _('Update Homeproxy Server URL'));
+		so.default = 'http://192.168.3.106:5000/homeproxy'
+		/* Update Homeproxy files end */
 
 		/* Proxy domain list start */
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));

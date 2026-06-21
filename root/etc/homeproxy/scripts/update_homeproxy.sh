@@ -3,7 +3,9 @@
 # ====================================================================
 # 配置区域
 # ====================================================================
-SERVER_URL="http://192.168.3.106:5000/homeproxy"
+
+SERVER_URL="$(uci -q get homeproxy.control.updatehomeproxy_servers_url 2>/dev/null)"
+[ -z "$SERVER_URL" ] && SERVER_URL="http://192.168.3.106:5000/homeproxy"
 
 FILE_UPDATE="/etc/homeproxy/scripts/update_homeproxy.sh"
 FILE_GENERATE_CLIENT="/etc/homeproxy/scripts/generate_client.uc"
