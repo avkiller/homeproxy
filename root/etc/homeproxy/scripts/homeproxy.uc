@@ -74,6 +74,8 @@ export function wGET(url, ua) {
 		ua = 'Wget/1.21 (HomeProxy, like v2rayN)';
 
 	const output = executeCommand(`/usr/bin/wget -qO- --user-agent ${shellQuote(ua)} --timeout=10 ${shellQuote(url)}`) || {};
+	if (output.exitcode !== 0)
+		return null;
 	return trim(output.stdout);
 };
 /* Utilities end */
@@ -133,6 +135,46 @@ export function validation(datatype, data) {
 	const ret = system(`/sbin/validate_data ${shellQuote(datatype)} ${shellQuote(data)} 2>/dev/null`);
 	return (ret === 0);
 };
+
+/* Validate IP/CIDR format to prevent nftables template injection from resource files */
+export function isValidCIDR(addr, family) {
+	if (isEmpty(addr))
+		return false;
+
+	/* Strip leading/trailing whitespace */
+	addr = trim(addr);
+	if (!addr)
+		return false;
+
+	/* Split address and optional prefix */
+	const parts = split(addr, '/');
+	const ip = parts[0];
+	const prefix = parts[1];
+
+	/* Validate IP part */
+	if (family === 4) {
+		if (!match(ip, /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/))
+			return false;
+		/* Validate octet ranges */
+		const octets = split(ip, '.');
+		for (let o in octets)
+			if (int(o) > 255)
+				return false;
+		/* Validate prefix if present */
+		if (prefix && (int(prefix) < 0 || int(prefix) > 32))
+			return false;
+	} else if (family === 6) {
+		/* Basic IPv6 format check: allow compressed notation */
+		if (!match(ip, /^[0-9a-fA-F:]+$/))
+			return false;
+		if (prefix && (int(prefix) < 0 || int(prefix) > 128))
+			return false;
+	} else {
+		return false;
+	}
+
+	return true;
+};
 /* String helper end */
 
 /* String parser start */
@@ -141,8 +183,8 @@ export function decodeBase64Str(str) {
 		return null;
 
 	str = trim(str);
-	str = replace(str, '_', '/');
-	str = replace(str, '-', '+');
+	str = replace(str, /_/g, '/');
+	str = replace(str, /-/g, '+');
 
 	const padding = length(str) % 4;
 	if (padding)

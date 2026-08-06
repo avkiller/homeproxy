@@ -10,10 +10,10 @@ SERVER_URL="$(uci -q get homeproxy.control.updatehomeproxy_servers_url 2>/dev/nu
 FILE_UPDATE="/etc/homeproxy/scripts/update_homeproxy.sh"
 FILE_GENERATE_CLIENT="/etc/homeproxy/scripts/generate_client.uc"
 FILE_MIGRATE_CONFIG="/etc/homeproxy/scripts/migrate_config.uc"
+FILE_HOMEPROXY_UC="/etc/homeproxy/scripts/homeproxy.uc"
 FILE_CLIENT_JS="/www/luci-static/resources/view/homeproxy/client.js"
 FILE_HOMEPROXY_JS="/www/luci-static/resources/homeproxy.js"
 FILE_UCODE_HOMEPROXY="/usr/share/rpcd/ucode/luci.homeproxy"
-
 # ====================================================================
 # 函数定义：支持不存在直接下载、存在则备份还原
 # ====================================================================
@@ -97,6 +97,11 @@ echo "------------------------------------------"
 # 处理 migrate_config.uc
 echo "-> 正在处理 migrate_config.uc..."
 download_and_restore "$FILE_MIGRATE_CONFIG" "${SERVER_URL}/migrate_config.uc"
+
+echo "------------------------------------------"
+# 处理 homeproxy.uc
+echo "-> 正在处理 HOMEPROXY_UC..."
+download_and_restore "$FILE_HOMEPROXY_UC" "${SERVER_URL}/homeproxy.uc"
 
 echo "------------------------------------------"
 

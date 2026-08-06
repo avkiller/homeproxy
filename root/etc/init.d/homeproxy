@@ -49,6 +49,13 @@ delete_ip6_rules() {
 	done
 }
 
+# fw4 reload rebuilds the whole ruleset and wipes miniupnpd's dynamic NAT
+# rules; restart it so mappings are re-added from its lease file.
+restore_upnp_mappings() {
+	[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd enabled && /etc/init.d/miniupnpd running \
+		&& /etc/init.d/miniupnpd restart >"/dev/null" 2>&1
+}
+
 start_service() {
 	config_load "$CONF"
 
@@ -71,6 +78,10 @@ start_service() {
 	fi
 
 	mkdir -p "$RUN_DIR"
+
+	# QUIC-GO GSO is broken on kernel 6.6 currently
+	local disable_gso=0
+	uname -r | grep -Eq "^6\.6" && disable_gso=1
 
 	if [ "$outbound_node" != "nil" ]; then
 		# Generate/Validate client config
@@ -175,8 +186,7 @@ start_service() {
 		procd_set_param command "$PROG"
 		procd_append_param command run --config "$RUN_DIR/sing-box-c.json"
 
-		# QUIC-GO GSO is broken on kernel 6.6 currently
-		uname -r | grep -Eq "^6\.6" && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
+		[ "$disable_gso" -eq "1" ] && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
 		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
 			procd_add_jail "sing-box-c" log procfs
@@ -219,8 +229,7 @@ start_service() {
 		procd_set_param command "$PROG"
 		procd_append_param command run --config "$RUN_DIR/sing-box-s.json"
 
-		# QUIC-GO GSO is broken on kernel 6.6 currently
-		uname -r | grep -Eq "^6\.6" && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
+		[ "$disable_gso" -eq "1" ] && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
 
 		if [ -x "/sbin/ujail" ]; then
 			procd_add_jail "sing-box-s" log procfs
@@ -272,11 +281,14 @@ start_service() {
 	chown -R sing-box:sing-box "$RUN_DIR"
 
 	# Setup firewall
-	ucode "$HP_DIR/scripts/firewall_pre.uc"
-	[ "$outbound_node" = "nil" ] || utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft"
-	fw4 reload >"/dev/null" 2>&1
+	ucode "$HP_DIR/scripts/firewall_pre.uc" 2>"/dev/null" || log "Error: firewall pre-script failed."
+	if [ "$outbound_node" != "nil" ]; then
+		utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft" 2>"/dev/null" || log "Error: firewall post-script failed."
+	fi
+	fw4 reload >"/dev/null" 2>&1 || log "Error: fw4 reload failed."
+	restore_upnp_mappings
 
-	log "sing-box $(sing-box version -n) started."
+	log "sing-box $(sing-box version -n 2>/dev/null || echo "unknown") started."
 }
 
 stop_service() {
@@ -329,6 +341,7 @@ stop_service() {
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_input.nft"
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_post.nft"
 	fw4 reload >"/dev/null" 2>&1
+        restore_upnp_mappings
 
 	# Remove DNS hijack
 	rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
