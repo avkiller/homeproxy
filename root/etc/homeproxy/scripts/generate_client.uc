@@ -795,11 +795,12 @@ if (isEmpty(config.endpoints))
 config.route = {
 	rules: [
 		{
-			inbound: 'dns-in',
-			action: 'hijack-dns'
+                "inbound": ["mixed-in", "redirect-in", "tun-in"],
+				"action": "sniff"
 		},
 		{
-			action: 'sniff'
+				"inbound": "dns-in",
+				"action": "hijack-dns"
 		}
 	],
 	rule_set: [],
