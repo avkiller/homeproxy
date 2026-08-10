@@ -3,7 +3,7 @@
 {%-
 import { readfile } from 'fs';
 import { cursor } from 'uci';
-import { isEmpty } from '/etc/homeproxy/scripts/homeproxy.uc';
+import { isEmpty, isValidCIDR } from '/etc/homeproxy/scripts/homeproxy.uc';
 
 const fw4 = require('fw4');
 

@@ -1,4 +1,20 @@
 * text=auto eol=lf
+
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
 *.sh text eol=lf
+*.uc text eol=lf
+*.ut text eol=lf
+
+*.json text eol=lf
+*.js text eol=lf
+*.js text eol=lf
+*.pot text eol=lf
+*.po text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
