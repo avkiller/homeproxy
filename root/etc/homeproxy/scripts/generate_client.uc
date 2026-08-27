@@ -793,16 +793,7 @@ if (isEmpty(config.endpoints))
 /* Routing rules start */
 /* Default settings */
 config.route = {
-	rules: [
-		{
-                "inbound": ["mixed-in", "redirect-in", "tun-in"],
-				"action": "sniff"
-		},
-		{
-				"inbound": "dns-in",
-				"action": "hijack-dns"
-		}
-	],
+	rules: [],
 	rule_set: [],
 	auto_detect_interface: isEmpty(default_interface) ? true : null,
 	default_interface: default_interface
@@ -815,6 +806,18 @@ if (!isEmpty(main_node)) {
 		server: (routing_mode === 'bypass_mainland_china') ? 'china-dns' : 'default-dns',
 		strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
 	};
+
+	// --- 优先级 1: 先插入 sniff ---
+	push(config.route.rules, {
+		"inbound": ["mixed-in", "redirect-in", "tun-in"],
+		"action": "sniff"
+	});
+
+	// --- 优先级 2: 再插入 hijack-dns ---
+	push(config.route.rules, {
+		"inbound": "dns-in",
+		"action": "hijack-dns"
+	});
 
 	/* Direct list */
 	if (length(direct_domain_list))
@@ -903,12 +906,26 @@ if (!isEmpty(main_node)) {
 			action: 'resolve',
 			strategy: domain_strategy
 		});
+	// 记录当前 reject 规则插入位置的索引值
+	let reject_idx = length(config.route.rules);
+
+	// 先把 sniff 和 hijack-dns 推进数组
+	push(config.route.rules, {
+		"inbound": ["mixed-in", "redirect-in", "tun-in"],
+		"action": "sniff"
+	});
+
+	push(config.route.rules, {
+		"inbound": "dns-in",
+		"action": "hijack-dns"
+	});
 
 	uci.foreach(uciconfig, uciroutingrule, (cfg) => {
 		if (cfg.enabled !== '1')
 			return null;
-
-		push(config.route.rules, {
+			
+        let rule_name = cfg.label || cfg.name || '';
+		let rule_item = {
 			ip_version: strToInt(cfg.ip_version),
 			protocol: cfg.protocol,
 			network: cfg.network,
@@ -941,7 +958,15 @@ if (!isEmpty(main_node)) {
 			tls_fragment: strToBool(cfg.tls_fragment),
 			tls_fragment_fallback_delay: strToTime(cfg.tls_fragment_fallback_delay),
 			tls_record_fragment: strToBool(cfg.tls_record_fragment)
-		});
+		};
+
+		// 如果动作是 reject，插入到 sniff 之前；否则普通规则追加到末尾
+		if (cfg.action === 'reject' && (index(rule_name, 'block_ip') !== -1 || index(rule_name, 'block-ip') !== -1)) {
+			splice(config.route.rules, reject_idx, 0, rule_item);
+			reject_idx++;
+		} else {
+			push(config.route.rules, rule_item);
+		}
 	});
 
 	config.route.final = get_outbound(default_outbound);
