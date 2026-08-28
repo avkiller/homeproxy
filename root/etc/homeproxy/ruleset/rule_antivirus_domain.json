@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "domain": [
+        "app-sec-cn.heytapmobi.com",
+        "appsec-mobile.meituan.com",
+        "data.sec.miui.com",
+        "datasec-kmsex-cn.heytapmobi.com",
+        "ixav-cse.avlyun.com",
+        "log.avlyun.com",
+        "msch.f.360.cn",
+        "omes-sec-stdsrp-cn.heytapmobi.com",
+        "omes-sec.heytapmobi.com",
+        "rcpc-sdk-access-v6.m.qq.com",
+        "tmfsdktcp.m.qq.com",
+        "tsms-drcn.security.dbankcloud.cn",
+        "virusinfo-cloudscan-cn.heytapmobi.com",
+        "virusinfo-sec.heytapmobi.com"
+      ]
+    }
+  ]
+}

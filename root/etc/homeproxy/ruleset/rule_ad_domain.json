@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "domain": [
+        "ads3-normal-lq.zijieapi.com",
+        "ads5-normal-lq.zijieapi.com",
+        "adx.ads.heytapmobi.com",
+        "b1-data.ads.heytapmobi.com",
+        "cdn.wwads.cn",
+        "ck.ads.heytapmobi.com",
+        "data.ads.oppomobile.com",
+        "push-ads-cn.heytapmobi.com",
+        "stg-data.ads.heytapmobi.com"
+      ]
+    }
+  ]
+}
