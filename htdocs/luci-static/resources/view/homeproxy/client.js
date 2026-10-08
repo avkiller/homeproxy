@@ -1460,6 +1460,11 @@ return view.extend({
 			_('Update interval of rule set.'));
 		so.placeholder = '1d';
 		so.depends('type', 'remote');
+
+		so = ss.option(form.Value, 'http_client', _('Update http_client'),
+			_('Update http_client of rule set.'));
+		so.placeholder = 'http-client-out';
+		so.depends('type', 'remote');
 		/* Rule set settings end */
 
 		/* ACL settings start */
