@@ -57,7 +57,7 @@ const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outbound_dns,
     domain_strategy, dns_server, china_dns_server, dns_default_strategy,
     dns_default_server, dns_disable_cache, dns_disable_cache_expire, dns_independent_cache,
-    dns_client_subnet, cache_file_store_rdrc, cache_file_rdrc_timeout, direct_domain_list,
+    dns_client_subnet, cache_file_store_dns, cache_file_rdrc_timeout, direct_domain_list,
     proxy_domain_list;
 
 if (routing_mode !== 'custom') {
@@ -93,8 +93,7 @@ if (routing_mode !== 'custom') {
 	dns_disable_cache_expire = uci.get(uciconfig, ucidnssetting, 'disable_cache_expire');
 	dns_independent_cache = uci.get(uciconfig, ucidnssetting, 'independent_cache');
 	dns_client_subnet = uci.get(uciconfig, ucidnssetting, 'client_subnet');
-	cache_file_store_rdrc = uci.get(uciconfig, ucidnssetting, 'cache_file_store_rdrc'),
-	cache_file_rdrc_timeout = uci.get(uciconfig, ucidnssetting, 'cache_file_rdrc_timeout');
+	cache_file_store_dns = uci.get(uciconfig, ucidnssetting, 'cache_file_store_dns'),
 
 	/* Routing settings */
 	default_outbound = uci.get(uciconfig, uciroutingsetting, 'default_outbound') || 'nil';
@@ -995,7 +994,7 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 	config.experimental.cache_file = {
 		enabled: true,
 		path: RUN_DIR + '/cache.db',
-		store_rdrc: strToBool(cache_file_store_rdrc),
+		store_dns: strToBool(cache_file_store_dns),
 		rdrc_timeout: strToTime(cache_file_rdrc_timeout),
 	};
 }

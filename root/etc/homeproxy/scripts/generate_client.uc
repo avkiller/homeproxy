@@ -55,10 +55,9 @@ const ntp_server = uci.get(uciconfig, uciinfra, 'ntp_server') || 'time.apple.com
 const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outbound_dns,
-    domain_strategy, dns_server, china_dns_server, dns_default_strategy,
-    dns_default_server, dns_disable_cache, dns_disable_cache_expire, dns_independent_cache,
-    dns_client_subnet, cache_file_store_rdrc, cache_file_rdrc_timeout, direct_domain_list,
-    proxy_domain_list;
+    domain_strategy, dns_server, china_dns_server, dns_default_strategy, dns_default_server,
+    dns_disable_cache, dns_disable_cache_expire, dns_client_subnet,
+    cache_file_store_dns, direct_domain_list, proxy_domain_list;
 
 if (routing_mode !== 'custom') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
@@ -90,8 +89,7 @@ if (routing_mode !== 'custom') {
 	dns_default_server = uci.get(uciconfig, ucidnssetting, 'default_server');
 	dns_disable_cache = uci.get(uciconfig, ucidnssetting, 'disable_cache');
 	dns_client_subnet = uci.get(uciconfig, ucidnssetting, 'client_subnet');
-	cache_file_store_rdrc = uci.get(uciconfig, ucidnssetting, 'cache_file_store_rdrc'),
-	cache_file_rdrc_timeout = uci.get(uciconfig, ucidnssetting, 'cache_file_rdrc_timeout');
+	cache_file_store_dns = uci.get(uciconfig, ucidnssetting, 'cache_file_store_dns'),
 
 	/* Routing settings */
 	default_outbound = uci.get(uciconfig, uciroutingsetting, 'default_outbound') || 'nil';
@@ -584,6 +582,18 @@ if (!isEmpty(main_node)) {
 }
 /* DNS end */
 
+/* http_clients start */
+config.http_clients = [];
+push(config.http_clients, {
+	"tag": "http-client-out",
+    "version": 2,
+    "detour": "direct-out",
+    "stream_receive_window": 0,
+    "connection_receive_window": 0
+});
+
+/* http_clients end */
+
 /* Inbound start */
 config.inbounds = [];
 
@@ -619,7 +629,7 @@ if (match(proxy_mode, /tproxy/))
 		listen: '::',
 		listen_port: int(tproxy_port),
 		network: 'udp',
-		udp_timeout: strToTime(udp_timeout),
+		udp_timeout: strToTime(udp_timeout)
 	});
 if (match(proxy_mode, /tun/))
 	push(config.inbounds, {
@@ -632,7 +642,7 @@ if (match(proxy_mode, /tun/))
 		auto_route: false,
 		endpoint_independent_nat: strToBool(endpoint_independent_nat),
 		udp_timeout: strToTime(udp_timeout),
-		stack: tcpip_stack,
+		stack: tcpip_stack
 	});
 /* Inbound end */
 
@@ -894,6 +904,7 @@ if (!isEmpty(main_node)) {
 		config.route.rule_set = null;
 } else if (!isEmpty(default_outbound)) {
 	config.route.default_domain_resolver = {
+		action: 'resolve',
 		server: get_resolver(default_outbound_dns)
 	};
 
@@ -992,8 +1003,7 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 	config.experimental.cache_file = {
 		enabled: true,
 		path: RUN_DIR + '/cache.db',
-		store_rdrc: strToBool(cache_file_store_rdrc),
-		rdrc_timeout: strToTime(cache_file_rdrc_timeout),
+		store_dns: strToBool(cache_file_store_dns),
 	};
 }
 
@@ -1015,5 +1025,35 @@ if (strToBool(clash_api_enabled)) {
 }
 /* Experimental end */
 
+/* sing-box API start*/
+config.services = [];
+
+const singbox_api_enabled = uci.get(uciconfig, "control", 'sing-box_enabled') || '0';
+if (strToBool(clash_api_enabled)) {
+
+	let sing-box_listen = uci.get(uciconfig, "control", "sing-box_listen") ?? "192.168.3.2";
+    let sing-box_listen_port = uci.get(uciconfig, "control", "sing-box_listen_port") ?? "9080";
+    let sing-box_allow_private_network= uci.get(uciconfig, "control", "sing-box_access_control_allow_private_network") ?? "1";
+	let sing-box_dashboard_path= uci.get(uciconfig, "control", "sing-box_dashboard_path") ?? "ui";
+	let sing-box_dashboard_download_url= uci.get(uciconfig, "control", "sing-box_dashboard_download_url") ?? "http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'";
+	let sing-box_dashboard_http_client= uci.get(uciconfig, "control", "sing-box_dashboard_http_client") ?? "http-client-out'";
+	let sing-box_dashboard_update_interval= uci.get(uciconfig, "control", "sing-box_dashboard_update_interval") ?? "1d'";
+	push(config.services, {
+		"type": "api",
+        "listen": sing-box_listen,
+        "listen_port": sing-box_listen_port,
+        "access_control_allow_private_network": sing-box_allow_private_network,
+        "dashboard": {
+        	"enabled": true, 
+            "path": sing-box_dashboard_path,
+            "download_url": sing-box_dashboard_download_url,
+            "http_client": sing-box_dashboard_http_client,
+            "update_interval": sing-box_dashboard_update_interval    
+            }
+	});
+
+}
+
+/* sing-box API end */
 system('mkdir -p ' + shellQuote(RUN_DIR));
 writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));

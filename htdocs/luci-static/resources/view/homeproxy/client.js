@@ -977,14 +977,14 @@ return view.extend({
 			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
 		so.datatype = 'or(cidr, ipaddr)';
 
-		so = ss.option(form.Flag, 'cache_file_store_rdrc', _('Store RDRC'),
+		so = ss.option(form.Flag, 'cache_file_store_dns', _('Store DNS'),
 			_('Store rejected DNS response cache.<br/>' +
 			'The check results of <code>Address filter DNS rule items</code> will be cached until expiration.'));
 
 		so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
 			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
 		so.datatype = 'uinteger';
-		so.depends('cache_file_store_rdrc', '1');
+		so.depends('cache_file_store_dns', '1');
 		/* DNS settings end */
 
 		/* DNS servers start */
@@ -1557,9 +1557,31 @@ return view.extend({
 		so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
 		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
 		so.default = 'direct-out'
-		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash dashboard Download url detour'));
+		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash Mode'));
 		so.default = 'rule'
 		/* Clash settings end */
+
+		/* sing-box API settings start */
+		ss.tab('sing-box-api', _('sing-box API Settings'));
+		so = ss.taboption('sing-box-api', form.Flag, 'sing-box_enabled', _('Clash dashboard Enable'));
+		so.default = '0'
+		so.rmempty = false;
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_listen', _('sing-box listen'));
+		so.default = '192.168.3.2'
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_listen_port', _('sing-box listen_port'));
+		so.default = '9080'
+		so = ss.taboption('sing-box-api', form.Flag, 'sing-box_access_control_allow_private_network', _('sing-box allow_private_network'));
+		so.default = '0'
+		so.rmempty = false;
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_dashboard_path', _('sing-box dashboard path'));
+		so.default = 'ui'
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_dashboard_download_url', _('sing-box dashboard Download url'));
+		so.default = 'http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_dashboard_http_client', _('sing-box dashboard http_client'));
+		so.default = 'http-client-out'
+		so = ss.taboption('sing-box-api', form.Value, 'sing-box_dashboard_update_interval', _('sing-box dashboard update_interval'));
+		so.default = '1d'
+		/* sing-box API settings end */
 
 		/* Update Homeproxy files start */
 		ss.tab('updatehomeproxy', _('Update HomeProxy Settings'));
