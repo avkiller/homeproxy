@@ -620,6 +620,7 @@ if (match(proxy_mode, /redirect/))
 
 		listen: '::',
 		listen_port: int(redirect_port)
+		listen_port: int(redirect_port)
 	});
 if (match(proxy_mode, /tproxy/))
 	push(config.inbounds, {
@@ -629,6 +630,7 @@ if (match(proxy_mode, /tproxy/))
 		listen: '::',
 		listen_port: int(tproxy_port),
 		network: 'udp',
+		udp_timeout: strToTime(udp_timeout)
 		udp_timeout: strToTime(udp_timeout)
 	});
 if (match(proxy_mode, /tun/))
@@ -642,6 +644,7 @@ if (match(proxy_mode, /tun/))
 		auto_route: false,
 		endpoint_independent_nat: strToBool(endpoint_independent_nat),
 		udp_timeout: strToTime(udp_timeout),
+		stack: tcpip_stack
 		stack: tcpip_stack
 	});
 /* Inbound end */
