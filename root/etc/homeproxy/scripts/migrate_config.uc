@@ -100,22 +100,22 @@ if (clash_api_enabled === '1')
 		uci.set(uciconfig, ucicontrol, 'clash_default_mode', 'rule');
 
 /* singbox API dashboard integration */	
-const singbox_api_enabled = uci.get(uciconfig, ucicontrol, 'sing-box_enabled');
+const singbox_api_enabled = uci.get(uciconfig, ucicontrol, 'sing_box_enabled');
 if (singbox_api_enabled === '1')
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_listen')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_listen', '192.168.3.2');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_listen_port')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_listen_port', '9080');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_access_control_allow_private_network')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_access_control_allow_private_network', '1');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_dashboard_path')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_dashboard_path', 'ui');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_dashboard_download_url')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_dashboard_download_url', 'http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_dashboard_http_client')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_dashboard_http_client', 'http-client-out');
-	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing-box_dashboard_update_interval')))
-		uci.set(uciconfig, ucicontrol, 'sing-box_dashboard_update_interval', '1d');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_listen')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_listen', '192.168.3.2');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_listen_port')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_listen_port', '9080');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_access_control_allow_private_network')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_access_control_allow_private_network', '1');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_dashboard_path')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_dashboard_path', 'ui');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_dashboard_download_url')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_dashboard_download_url', 'http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_dashboard_http_client')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_dashboard_http_client', 'http-client-out');
+	if (isEmpty(uci.get(uciconfig, ucicontrol, 'sing_box_dashboard_update_interval')))
+		uci.set(uciconfig, ucicontrol, 'sing_box_dashboard_update_interval', '1d');
 
 /* empty value defaults to all ports now */
 if (uci.get(uciconfig, ucimain, 'routing_port') === 'all')
@@ -270,6 +270,23 @@ uci.foreach(uciconfig, ucinode, (cfg) => {
 });
 
 /* routing rules options */
+if (!isEmpty(uci.get(uciconfig, ucidns, 'independent_cache')))
+	uci.delete(uciconfig, ucidns, 'independent_cache');
+
+const legacy_store_rdrc = uci.get(uciconfig, ucidns, 'cache_file_store_rdrc');
+if (!isEmpty(legacy_store_rdrc)) {
+	uci.set(uciconfig, ucidns, 'cache_file_store_dns', legacy_store_rdrc);
+	uci.delete(uciconfig, ucidns, 'cache_file_store_rdrc');
+}
+if (!isEmpty(uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout')))
+	uci.delete(uciconfig, ucidns, 'cache_file_rdrc_timeout');
+
+uci.foreach(uciconfig, ucidnsrule, (cfg) => {
+	if (!isEmpty(cfg.domain_strategy))
+		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
+	if (!isEmpty(cfg.rule_set_ip_cidr_accept_empty))
+		uci.delete(uciconfig, cfg['.name'], 'rule_set_ip_cidr_accept_empty');
+});
 uci.foreach(uciconfig, uciroutingrule, (cfg) => {
 	/* rule_set_ipcidr_match_source was renamed in sb 1.10 */
 	if (cfg.rule_set_ipcidr_match_source === '1')

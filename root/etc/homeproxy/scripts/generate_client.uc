@@ -88,6 +88,7 @@ if (routing_mode !== 'custom') {
 	dns_default_strategy = uci.get(uciconfig, ucidnssetting, 'default_strategy');
 	dns_default_server = uci.get(uciconfig, ucidnssetting, 'default_server');
 	dns_disable_cache = uci.get(uciconfig, ucidnssetting, 'disable_cache');
+	dns_disable_cache_expire = uci.get(uciconfig, ucidnssetting, 'disable_cache_expire');
 	dns_client_subnet = uci.get(uciconfig, ucidnssetting, 'client_subnet');
 	cache_file_store_dns = uci.get(uciconfig, ucidnssetting, 'cache_file_store_dns'),
 
@@ -96,6 +97,10 @@ if (routing_mode !== 'custom') {
 	default_outbound_dns = uci.get(uciconfig, uciroutingsetting, 'default_outbound_dns') || 'default-dns';
 	domain_strategy = uci.get(uciconfig, uciroutingsetting, 'domain_strategy');
 }
+const dns_optimistic_cache = uci.get(uciconfig, ucidnssetting, 'optimistic_cache') || '0',
+      dns_optimistic_timeout = uci.get(uciconfig, ucidnssetting, 'optimistic_timeout'),
+      dns_query_timeout = uci.get(uciconfig, ucidnssetting, 'dns_timeout'),
+      dns_store_dns = uci.get(uciconfig, ucidnssetting, 'cache_file_store_dns') || '0';
 
 const proxy_mode = uci.get(uciconfig, ucimain, 'proxy_mode') || 'redirect_tproxy',
       default_interface = uci.get(uciconfig, ucicontrol, 'bind_interface');
@@ -131,7 +136,18 @@ if (match(proxy_mode, /tun/)) {
 }
 
 const log_level = uci.get(uciconfig, ucimain, 'log_level') || 'warn';
-/* UCI config end */
+
+const tun_dns_mode_raw = uci.get(uciconfig, ucimain, 'tun_dns_mode'),
+      tun_dns_address = uci.get(uciconfig, ucimain, 'tun_dns_address'),
+      udp_mapping_raw = uci.get(uciconfig, ucimain, 'udp_mapping'),
+      udp_filtering_raw = uci.get(uciconfig, ucimain, 'udp_filtering'),
+      udp_nat_max = strToInt(uci.get(uciconfig, ucimain, 'udp_nat_max'));
+
+const tun_dns_mode = (tun_dns_mode_raw === 'default') ? '' : tun_dns_mode_raw,
+      udp_mapping = (udp_mapping_raw === 'default') ? '' : udp_mapping_raw,
+      udp_filtering = (udp_filtering_raw === 'default') ? '' : udp_filtering_raw;
+
+const direct_overrides = {};
 
 /* Config helper start */
 function parse_port(strport) {
@@ -201,7 +217,10 @@ function generate_endpoint(node) {
 		system: (node.type === 'wireguard') ? false : null,
 		tcp_fast_open: strToBool(node.tcp_fast_open),
 		tcp_multi_path: strToBool(node.tcp_multi_path),
-		udp_fragment: strToBool(node.udp_fragment)
+		udp_fragment: strToBool(node.udp_fragment),
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max
 	};
 
 	return endpoint;
@@ -428,7 +447,13 @@ config.dns = {
 	rules: [],
 	strategy: dns_default_strategy,
 	disable_cache: strToBool(dns_disable_cache),
-	client_subnet: dns_client_subnet
+	disable_expire: strToBool(dns_disable_cache_expire),
+	client_subnet: dns_client_subnet,
+	optimistic: (dns_optimistic_cache === '1') ? {
+		enabled: true,
+		timeout: !isEmpty(dns_optimistic_timeout) ? dns_optimistic_timeout : '3d'
+	} : null,
+	timeout: !isEmpty(dns_query_timeout) ? strToTime(dns_query_timeout) : null
 };
 
 if (!isEmpty(main_node)) {
@@ -534,7 +559,8 @@ if (!isEmpty(main_node)) {
 		if (cfg.enabled !== '1')
 			return;
 
-		push(config.dns.rules, {
+		/* 1. 先构建基础规则对象，避免 rule 未声明 */
+		let rule = {
 			ip_version: strToInt(cfg.ip_version),
 			query_type: parse_dnsquery(cfg.query_type),
 			network: cfg.network,
@@ -547,8 +573,6 @@ if (!isEmpty(main_node)) {
 			port_range: cfg.port_range,
 			source_ip_cidr: cfg.source_ip_cidr,
 			source_ip_is_private: strToBool(cfg.source_ip_is_private),
-			ip_cidr: cfg.ip_cidr,
-			ip_is_private: strToBool(cfg.ip_is_private),
 			source_port: parse_port(cfg.source_port),
 			source_port_range: cfg.source_port_range,
 			process_name: cfg.process_name,
@@ -557,22 +581,85 @@ if (!isEmpty(main_node)) {
 			user: cfg.user,
 			rule_set: get_ruleset(cfg.rule_set),
 			rule_set_ip_cidr_match_source: strToBool(cfg.rule_set_ip_cidr_match_source),
-			rule_set_ip_cidr_accept_empty: strToBool(cfg.rule_set_ip_cidr_accept_empty),
 			invert: strToBool(cfg.invert),
+			race: strToBool(cfg.race),
+			speculative: strToBool(cfg.speculative),
 			outbound: get_outbound(cfg.outbound),
 			action: cfg.action,
 			server: get_resolver(cfg.server),
-			strategy: cfg.domain_strategy,
 			disable_cache: strToBool(cfg.dns_disable_cache),
+			disable_optimistic_cache: strToBool(cfg.disable_optimistic_cache),
 			rewrite_ttl: strToInt(cfg.rewrite_ttl),
+			timeout: strToTime(cfg.dns_timeout),
 			client_subnet: cfg.client_subnet,
+			remove_client_subnet: strToBool(cfg.remove_client_subnet),
 			method: cfg.reject_method,
 			no_drop: strToBool(cfg.reject_no_drop),
 			rcode: cfg.predefined_rcode,
 			answer: cfg.predefined_answer,
 			ns: cfg.predefined_ns,
 			extra: cfg.predefined_extra
-		});
+		};
+		if (cfg.action === 'evaluate')
+			rule.tag = cfg.evaluate_tag || null;
+
+		/* 2. 用户显式配置了 match_response 时直接透传（保留旧行为） */
+		if (cfg.match_response && cfg.match_response !== '0')
+			rule.match_response = (cfg.match_response === '1') ? true : cfg.match_response;
+
+		/* 3. 旧版 ip_cidr / ip_is_private 字段需要拆成 evaluate + match_response */
+
+		const legacy_filter = !isEmpty(cfg.ip_cidr) || strToBool(cfg.ip_is_private) === true;
+		if (legacy_filter && !rule.match_response && cfg.action === 'route') {
+			const eval_tag = '_hp_eval_' + cfg['.name'];
+			/* 3a. 先插入 evaluate 规则：只负责发出查询并保存响应 */
+			const eval_rule = {
+				action: 'evaluate',
+				server: get_resolver(cfg.server),
+				tag: eval_tag
+			};
+			const eval_match_fields = [
+				'inbound', 'ip_version', 'query_type', 'network', 'protocol', 'auth_user',
+				'domain', 'domain_suffix', 'domain_keyword', 'domain_regex',
+				'port', 'port_range', 'source_ip_cidr', 'source_ip_is_private',
+				'source_port', 'source_port_range', 'process_name', 'process_path',
+				'process_path_regex', 'user', 'rule_set', 'rule_set_ip_cidr_match_source',
+				'invert', 'query_client_subnet', 'query_dnssec', 'source_mac_address',
+				'source_hostname'
+			];
+			for (let f in eval_match_fields)
+				eval_rule[f] = rule[f];
+			push(config.dns.rules, eval_rule);
+			/* 3b. 当前规则引用该 evaluate 结果，并携带 IP 筛选字段 */
+			rule.match_response = eval_tag;
+			rule.ip_cidr = cfg.ip_cidr;
+			rule.ip_is_private = strToBool(cfg.ip_is_private);
+		}
+
+		/* 4. 若已带 match_response（用户配置或上一步生成），补上 IP 字段 */
+		if (rule.match_response && rule.action === 'route') {
+			if (rule.ip_cidr === null || rule.ip_cidr === undefined)
+			rule.ip_cidr = cfg.ip_cidr;
+			if (rule.ip_is_private === null || rule.ip_is_private === undefined)
+			rule.ip_is_private = strToBool(cfg.ip_is_private);
+		}
+
+		/* 5. 剩余响应匹配 / 源信息字段透传 */
+		rule.query_client_subnet = cfg.query_client_subnet;
+		rule.query_dnssec = strToBool(cfg.query_dnssec);
+		rule.response_rcode = cfg.response_rcode;
+		rule.response_answer = cfg.response_answer;
+		rule.response_ns = cfg.response_ns;
+		rule.response_extra = cfg.response_extra;
+		rule.source_mac_address = cfg.source_mac_address;
+		rule.source_hostname = cfg.source_hostname;
+		/* 6. 安全检查：route / evaluate 必须有 server */
+		if ((rule.action === 'route' || rule.action === 'evaluate') && isEmpty(rule.server)) {
+			warn(sprintf("homeproxy: DNS rule '%s' has no server configured, skipping it.", cfg['.name']));
+			return;
+		}
+
+		push(config.dns.rules, rule);
 	});
 
 	if (isEmpty(config.dns.rules))
@@ -620,7 +707,6 @@ if (match(proxy_mode, /redirect/))
 
 		listen: '::',
 		listen_port: int(redirect_port)
-		listen_port: int(redirect_port)
 	});
 if (match(proxy_mode, /tproxy/))
 	push(config.inbounds, {
@@ -630,8 +716,10 @@ if (match(proxy_mode, /tproxy/))
 		listen: '::',
 		listen_port: int(tproxy_port),
 		network: 'udp',
-		udp_timeout: strToTime(udp_timeout)
-		udp_timeout: strToTime(udp_timeout)
+		udp_timeout: strToTime(udp_timeout),
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max,
 	});
 if (match(proxy_mode, /tun/))
 	push(config.inbounds, {
@@ -644,8 +732,12 @@ if (match(proxy_mode, /tun/))
 		auto_route: false,
 		endpoint_independent_nat: strToBool(endpoint_independent_nat),
 		udp_timeout: strToTime(udp_timeout),
-		stack: tcpip_stack
-		stack: tcpip_stack
+		dns_mode: !isEmpty(tun_dns_mode) ? tun_dns_mode : null,
+		dns_address: !isEmpty(tun_dns_address) ? tun_dns_address : null,
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max,
+		stack: tcpip_stack,
 	});
 /* Inbound end */
 
@@ -911,6 +1003,8 @@ if (!isEmpty(main_node)) {
 		server: get_resolver(default_outbound_dns)
 	};
 
+	if (uci.get(uciconfig, uciroutingsetting, 'find_neighbor') === '1')
+		config.route.find_neighbor = true;
 	if (domain_strategy)
 		push(config.route.rules, {
 			action: 'resolve',
@@ -939,6 +1033,7 @@ if (!isEmpty(main_node)) {
 			ip_version: strToInt(cfg.ip_version),
 			protocol: cfg.protocol,
 			network: cfg.network,
+			client: cfg.client,
 			domain: cfg.domain,
 			domain_suffix: cfg.domain_suffix,
 			domain_keyword: cfg.domain_keyword,
@@ -967,7 +1062,11 @@ if (!isEmpty(main_node)) {
 			udp_timeout: strToTime(cfg.udp_timeout),
 			tls_fragment: strToBool(cfg.tls_fragment),
 			tls_fragment_fallback_delay: strToTime(cfg.tls_fragment_fallback_delay),
-			tls_record_fragment: strToBool(cfg.tls_record_fragment)
+			tls_record_fragment: strToBool(cfg.tls_record_fragment),
+			tls_spoof: cfg.tls_spoof || null,
+			tls_spoof_method: cfg.tls_spoof_method || null,
+			source_mac_address: cfg.source_mac_address,
+			source_hostname: cfg.source_hostname
 		};
 
 		// 如果动作是 reject，插入到 sniff 之前；否则普通规则追加到末尾
@@ -1031,32 +1130,35 @@ if (strToBool(clash_api_enabled)) {
 /* sing-box API start*/
 config.services = [];
 
-const singbox_api_enabled = uci.get(uciconfig, "control", 'sing-box_enabled') || '0';
-if (strToBool(clash_api_enabled)) {
+const singbox_api_enabled = uci.get(uciconfig, "control", 'singbox_api_enabled') || '0';
+if (strToBool(singbox_api_enabled)) {
 
-	let sing-box_listen = uci.get(uciconfig, "control", "sing-box_listen") ?? "192.168.3.2";
-    let sing-box_listen_port = uci.get(uciconfig, "control", "sing-box_listen_port") ?? "9080";
-    let sing-box_allow_private_network= uci.get(uciconfig, "control", "sing-box_access_control_allow_private_network") ?? "1";
-	let sing-box_dashboard_path= uci.get(uciconfig, "control", "sing-box_dashboard_path") ?? "ui";
-	let sing-box_dashboard_download_url= uci.get(uciconfig, "control", "sing-box_dashboard_download_url") ?? "http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'";
-	let sing-box_dashboard_http_client= uci.get(uciconfig, "control", "sing-box_dashboard_http_client") ?? "http-client-out'";
-	let sing-box_dashboard_update_interval= uci.get(uciconfig, "control", "sing-box_dashboard_update_interval") ?? "1d'";
+	let singbox_api_listen = uci.get(uciconfig, "control", "singbox_api_listen") ?? "192.168.3.2";
+    let singbox_api_listen_port = uci.get(uciconfig, "control", "singbox_api_listen_port") ?? "9080";
+    let singbox_api_allow_private_network= uci.get(uciconfig, "control", "singbox_api_access_control_allow_private_network") ?? "1";
+	let singbox_api_dashboard_path= uci.get(uciconfig, "control", "singbox_api_api_dashboard_path") ?? "ui";
+	let singbox_api_dashboard_download_url= uci.get(uciconfig, "control", "singbox_api_dashboard_download_url") ?? "http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'";
+	let singbox_api_dashboard_http_client= uci.get(uciconfig, "control", "singbox_api_dashboard_http_client") ?? "http-client-out'";
+	let singbox_api_dashboard_update_interval= uci.get(uciconfig, "control", "singbox_api_dashboard_update_interval") ?? "1d";
+	
 	push(config.services, {
 		"type": "api",
-        "listen": sing-box_listen,
-        "listen_port": sing-box_listen_port,
-        "access_control_allow_private_network": sing-box_allow_private_network,
+        "listen": singbox_api_listen,
+        "listen_port": int(singbox_api_listen_port),
+        "access_control_allow_private_network":  strToBool(singbox_api_allow_private_network),
         "dashboard": {
         	"enabled": true, 
-            "path": sing-box_dashboard_path,
-            "download_url": sing-box_dashboard_download_url,
-            "http_client": sing-box_dashboard_http_client,
-            "update_interval": sing-box_dashboard_update_interval    
+            "path": singbox_api_dashboard_path,
+            "download_url": singbox_api_dashboard_download_url,
+            "http_client": singbox_api_dashboard_http_client,
+            "update_interval": singbox_api_dashboard_update_interval    
             }
 	});
 
 }
 
 /* sing-box API end */
+/* sing-box schema */
+config['$schema'] = 'https://sing-box.sagernet.org/schema.json';
 system('mkdir -p ' + shellQuote(RUN_DIR));
 writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));
