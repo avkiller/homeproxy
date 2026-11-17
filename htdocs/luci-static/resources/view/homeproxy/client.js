@@ -90,6 +90,32 @@ function handleUpdateHomeproxy(ev) {
 	});
 }
 
+/* 由 rule_set 的 url 推导默认 initial_path */
+function rulesetInitialPath(section_id, url) {
+	if (!url)
+		return '';
+
+	var s = String(url);
+	var i = s.lastIndexOf('/');
+	if (i >= 0)
+		s = s.substring(i + 1);
+
+	var q = s.indexOf('?');
+	if (q >= 0)
+		s = s.substring(0, q);
+
+	var h = s.indexOf('#');
+	if (h >= 0)
+		s = s.substring(0, h);
+
+	s = s.replace(/[^A-Za-z0-9._-]/g, '_');
+
+	if (!s || s === '/')
+		return '';
+
+	return '/etc/homeproxy/ruleset/' + section_id + '_' + s;
+}
+
 let stubValidator = {
 	factory: validation,
 	apply(type, value, args) {
@@ -1594,9 +1620,29 @@ return view.extend({
 
 		so = ss.option(form.Value, 'initial_path', _('Initial path'),
 			_('1.14 Local file with initial rule-set content;  URL: /etc/homeproxy/ruleset/'));
-		so.datatype = 'file';
+		// so.datatype = 'file';
+		so.validate = function(section_id, value) {
+			if (section_id && value && !/^\/etc\/homeproxy\/ruleset\/[^/]+$/.test(value))
+				return _('Expecting: %s').format(_('/etc/homeproxy/ruleset/&lt;filename&gt;'));
+			return true;
+		};
 		so.depends('type', 'remote');
 		so.modalonly = true;
+		so.placeholder = '/etc/homeproxy/ruleset/cn.srs';
+        /* 未配置时，界面上就显示推导出的默认值，用户可改 */
+        so.cfgvalue = function(section_id) {
+	    	var v = uci.get(data[0], section_id, 'initial_path');
+			if (v !== null && v !== undefined && v !== '')
+				return v;
+			return rulesetInitialPath(section_id, uci.get(data[0], section_id, 'url'));
+        };
+        /* 提交时：用户填了就用用户的，没填也写入推导值，保证 UCI 里可见 */
+        so.formvalue = function(section_id) {
+			var v = this.super('formvalue', section_id);
+			if (v)
+				return v;
+			return rulesetInitialPath(section_id, uci.get(data[0], section_id, 'url'));
+		};
 		so = ss.option(form.Value, 'update_interval', _('Update interval'),
 			_('Update interval of rule set.'));
 		so.placeholder = '1d';
