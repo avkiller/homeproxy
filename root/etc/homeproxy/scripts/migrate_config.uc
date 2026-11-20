@@ -83,6 +83,12 @@ if (isEmpty(uci.get(uciconfig, ucimain, 'log_level')))
 if (isEmpty(uci.get(uciconfig, uciserver, 'log_level')))
 	uci.set(uciconfig, uciserver, 'log_level', 'warn');
 
+/* dashboard 配置不存在 */
+if (!uci.get(uciconfig, ucidashboard)) {
+	uci.set(uciconfig, ucidashboard, 'homeproxy');
+	uci.commit(uciconfig);
+}
+
 /* Clash API dashboard integration */
 if (isEmpty(uci.get(uciconfig, ucidashboard, 'clash_api_enabled')))
 	uci.set(uciconfig, ucidashboard, 'clash_api_enabled', '0');

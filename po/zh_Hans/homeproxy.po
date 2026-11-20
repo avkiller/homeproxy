@@ -3543,7 +3543,7 @@ msgstr "quic-go / uquic chrome"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:2069
 msgid "sing-box API Settings"
-msgstr "sing-box Grpc API设置"
+msgstr "sing-box 设置"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:2077
 msgid "sing-box allow_private_network"
