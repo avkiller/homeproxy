@@ -50,7 +50,7 @@ if (!wan_dns)
 
 const dns_port = uci.get(uciconfig, uciinfra, 'dns_port') || '5333';
 
-const ntp_server = uci.get(uciconfig, uciinfra, 'ntp_server') || 'time.apple.com';
+const ntp_server = uci.get(uciconfig, uciinfra, 'ntp_server') || 'ntp.aliyun.com';
 
 const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 
@@ -670,14 +670,140 @@ if (!isEmpty(main_node)) {
 /* DNS end */
 
 /* http_clients start */
-config.http_clients = [];
-push(config.http_clients, {
-	"tag": "http-client-out",
-    "version": 2,
-    "detour": "direct-out",
-    "stream_receive_window": 0,
-    "connection_receive_window": 0
-});
+/* =========================================================
+ * 工具函数：递归清理值为 null 的字段，避免输出多余 null 键值
+ * ========================================================= */
+function compact_nulls(val) {
+	if (type(val) === 'array') {
+		let arr = [];
+		for (let item in val) {
+			let cleaned = compact_nulls(item);
+			if (cleaned != null)
+				push(arr, cleaned);
+		}
+		return arr;
+	}
+	if (type(val) === 'object') {
+		let obj = {};
+		for (let k, v in val) {
+			let cleaned = compact_nulls(v);
+			if (cleaned != null)
+				obj[k] = cleaned;
+		}
+		return obj;
+	}
+	return val;
+}
+
+/* =========================================================
+ * 1. 初始化内置默认 http-client-out，并追加已启用的自定义项
+ * ========================================================= */
+const BUILTIN_HTTP_CLIENT = {
+	tag: 'http-client-out',
+	version: 2,
+	detour: 'direct-out',
+	stream_receive_window: 0,
+	connection_receive_window: 0
+};
+
+/* 默认始终包含内置 http-client-out */
+let http_clients = [ BUILTIN_HTTP_CLIENT ];
+
+/* 记录所有可用（已启用）的 http_client tag，供后续引用校验 */
+let enabled_http_client_tags = {
+	'http-client-out': true
+};
+
+try {
+	uci.foreach(uciconfig, 'http_client', (cfg) => {
+		/* 跳过未启用或无效配置节 */
+		if (!cfg || cfg.enabled !== '1')
+			return;
+
+		let tag = cfg['.name'];
+		/* 跳过空 tag，并防止自定义配置意外覆盖内置默认 tag */
+		if (!tag || type(tag) !== 'string' || length(trim(tag)) === 0 || tag === 'http-client-out')
+			return;
+
+		/* 构建单条自定义 HTTP Client（精简核心字段 + 必要高级字段） */
+		let client = {
+			tag: tag,
+			version: (cfg.version && length(trim(cfg.version)) > 0) ? int(cfg.version) : null,
+			disable_version_fallback: (cfg.disable_version_fallback === '1') ? true : null,
+			detour: (cfg.detour && length(trim(cfg.detour)) > 0) ? trim(cfg.detour) : null,
+			connect_timeout: (cfg.connect_timeout && length(trim(cfg.connect_timeout)) > 0) ? trim(cfg.connect_timeout) : null,
+			domain_resolver: (cfg.domain_resolver && length(trim(cfg.domain_resolver)) > 0) ? trim(cfg.domain_resolver) : null,
+
+			/* 以下为高级开关展开时可能填写的扩展字段（留空则自动剔除） */
+			engine: (cfg.engine && length(trim(cfg.engine)) > 0) ? trim(cfg.engine) : null,
+			stream_receive_window: (cfg.stream_receive_window != null && length(trim('' + cfg.stream_receive_window)) > 0) ? trim('' + cfg.stream_receive_window) : null,
+			connection_receive_window: (cfg.connection_receive_window != null && length(trim('' + cfg.connection_receive_window)) > 0) ? trim('' + cfg.connection_receive_window) : null,
+			max_concurrent_streams: (cfg.max_concurrent_streams != null && length(trim('' + cfg.max_concurrent_streams)) > 0) ? int(cfg.max_concurrent_streams) : null,
+			idle_timeout: (cfg.idle_timeout && length(trim(cfg.idle_timeout)) > 0) ? trim(cfg.idle_timeout) : null,
+			keep_alive_period: (cfg.keep_alive_period && length(trim(cfg.keep_alive_period)) > 0) ? trim(cfg.keep_alive_period) : null,
+			bind_interface: (cfg.bind_interface && length(trim(cfg.bind_interface)) > 0) ? trim(cfg.bind_interface) : null,
+			inet4_bind_address: (cfg.inet4_bind_address && length(trim(cfg.inet4_bind_address)) > 0) ? trim(cfg.inet4_bind_address) : null,
+			inet6_bind_address: (cfg.inet6_bind_address && length(trim(cfg.inet6_bind_address)) > 0) ? trim(cfg.inet6_bind_address) : null,
+			tcp_fast_open: (cfg.tcp_fast_open === '1') ? true : null,
+			tcp_multi_path: (cfg.tcp_multi_path === '1') ? true : null,
+			udp_fragment: (cfg.udp_fragment === '1') ? true : null,
+			network_strategy: (cfg.network_strategy && length(trim(cfg.network_strategy)) > 0) ? trim(cfg.network_strategy) : null,
+			fallback_delay: (cfg.fallback_delay && length(trim(cfg.fallback_delay)) > 0) ? trim(cfg.fallback_delay) : null
+		};
+
+		/* 仅当 HTTP 版本为 3 (QUIC) 时输出 QUIC 专属参数 */
+		if (cfg.version === '3') {
+			client.initial_packet_size = (cfg.initial_packet_size != null && length(trim('' + cfg.initial_packet_size)) > 0) ? int(cfg.initial_packet_size) : null;
+			client.disable_path_mtu_discovery = (cfg.disable_path_mtu_discovery === '1') ? true : null;
+		}
+
+		/* 将 "Key: Value" 列表转换为 headers 对象（按首个冒号分割，避免值中含冒号被截断） */
+		if (type(cfg.headers) === 'array' && length(cfg.headers) > 0) {
+			let headers = {};
+			for (let h in cfg.headers) {
+				if (type(h) !== 'string')
+					continue;
+				let idx = index(h, ':');
+				if (idx > 0) {
+					let k = trim(substr(h, 0, idx));
+					let v = trim(substr(h, idx + 1));
+					if (length(k) > 0)
+						headers[k] = v;
+				}
+			}
+			if (length(headers) > 0)
+				client.headers = headers;
+		}
+
+		/* 数组型网络类型字段 */
+		if (type(cfg.network_type) === 'array' && length(cfg.network_type) > 0)
+			client.network_type = cfg.network_type;
+
+		if (type(cfg.fallback_network_type) === 'array' && length(cfg.fallback_network_type) > 0)
+			client.fallback_network_type = cfg.fallback_network_type;
+
+		/* 启用 TLS 时生成嵌套 tls 对象 */
+		if (cfg.tls_enabled === '1') {
+			client.tls = compact_nulls({
+				enabled: true,
+				server_name: (cfg.tls_server_name && length(trim(cfg.tls_server_name)) > 0) ? trim(cfg.tls_server_name) : null,
+				insecure: (cfg.tls_insecure === '1') ? true : null
+			});
+		}
+
+		enabled_http_client_tags[tag] = true;
+		push(http_clients, compact_nulls(client));
+	});
+} catch (e) {
+	/* 解析异常时兜底回退到仅含内置 http-client-out 的配置 */
+	http_clients = [ BUILTIN_HTTP_CLIENT ];
+	enabled_http_client_tags = {
+		'http-client-out': true
+	};
+}
+
+/* 写入顶层 http_clients */
+config.http_clients = http_clients;
 
 /* http_clients end */
 
@@ -1094,8 +1220,11 @@ if (!isEmpty(main_node)) {
 		};
 
 		if (cfg.type === 'remote') {
+                        let client = (cfg.http_client && type(cfg.http_client) === 'string' && length(trim(cfg.http_client)) > 0)
+			? trim(cfg.http_client)
+			: 'http-client-out';
 			ruleset_item.url = cfg.url;
-			ruleset_item.http_client = 'http-client-out';
+			ruleset_item.http_client = client;
 			if (cfg.initial_path)
 			ruleset_item.initial_path = cfg.initial_path;
 	    }
@@ -1107,7 +1236,7 @@ if (!isEmpty(main_node)) {
 
 /* Experimental start */
 config.experimental = {};
-const clash_api_enabled = uci.get(uciconfig, "control", 'clash_api_enabled') || '0';
+const clash_api_enabled = uci.get(uciconfig, "dashboard", 'clash_api_enabled') || '0';
 if (routing_mode in ['bypass_mainland_china', 'custom']) {
 	config.experimental.cache_file = {
 		enabled: true,
@@ -1117,11 +1246,11 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 }
 
 if (strToBool(clash_api_enabled)) {
-	let clash_controller = uci.get(uciconfig, "control", "clash_controller") ?? "192.168.3.2:9090";
-	let clash_external_ui = uci.get(uciconfig, "control", "clash_external_ui") ?? "dashboard";
-	let clash_external_ui_download_url = uci.get(uciconfig, "control", "clash_external_ui_download_url") ?? "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip";
-	let clash_external_ui_download_detour = uci.get(uciconfig, "control", "clash_external_ui_download_detour") ?? "direct-out";
-	let clash_default_mode = uci.get(uciconfig, "control", "clash_default_mode") ?? "rule";
+	let clash_controller = uci.get(uciconfig, "dashboard", "clash_controller") ?? "192.168.3.2:9090";
+	let clash_external_ui = uci.get(uciconfig, "dashboard", "clash_external_ui") ?? "dashboard";
+	let clash_external_ui_download_url = uci.get(uciconfig, "dashboard", "clash_external_ui_download_url") ?? "http://192.168.3.106:5000/ui/zashboard-gh-pages.zip";
+	let clash_external_ui_download_detour = uci.get(uciconfig, "dashboard", "clash_external_ui_download_detour") ?? "direct-out";
+	let clash_default_mode = uci.get(uciconfig, "dashboard", "clash_default_mode") ?? "rule";
 	
 	config.experimental.clash_api = {
         "external_controller": clash_controller,
@@ -1137,16 +1266,16 @@ if (strToBool(clash_api_enabled)) {
 /* sing-box API start*/
 config.services = [];
 
-const singbox_api_enabled = uci.get(uciconfig, "control", 'singbox_api_enabled') || '0';
+const singbox_api_enabled = uci.get(uciconfig, "dashboard", 'singbox_api_enabled') || '0';
 if (strToBool(singbox_api_enabled)) {
 
-	let singbox_api_listen = uci.get(uciconfig, "control", "singbox_api_listen") ?? "192.168.3.2";
-    let singbox_api_listen_port = uci.get(uciconfig, "control", "singbox_api_listen_port") ?? "9080";
-    let singbox_api_allow_private_network= uci.get(uciconfig, "control", "singbox_api_access_control_allow_private_network") ?? "1";
-	let singbox_api_dashboard_path= uci.get(uciconfig, "control", "singbox_api_api_dashboard_path") ?? "ui";
-	let singbox_api_dashboard_download_url= uci.get(uciconfig, "control", "singbox_api_dashboard_download_url") ?? "http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'";
-	let singbox_api_dashboard_http_client= uci.get(uciconfig, "control", "singbox_api_dashboard_http_client") ?? "http-client-out'";
-	let singbox_api_dashboard_update_interval= uci.get(uciconfig, "control", "singbox_api_dashboard_update_interval") ?? "1d";
+	let singbox_api_listen = uci.get(uciconfig, "dashboard", "singbox_api_listen") ?? "192.168.3.2";
+    let singbox_api_listen_port = uci.get(uciconfig, "dashboard", "singbox_api_listen_port") ?? "9080";
+    let singbox_api_allow_private_network= uci.get(uciconfig, "dashboard", "singbox_api_access_control_allow_private_network") ?? "1";
+	let singbox_api_dashboard_path= uci.get(uciconfig, "contrdashboardol", "singbox_api_api_dashboard_path") ?? "ui";
+	let singbox_api_dashboard_download_url= uci.get(uciconfig, "dashboard", "singbox_api_dashboard_download_url") ?? "http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'";
+	let singbox_api_dashboard_http_client= uci.get(uciconfig, "dashboard", "singbox_api_dashboard_http_client") ?? "http-client-out'";
+	let singbox_api_dashboard_update_interval= uci.get(uciconfig, "dashboard", "singbox_api_dashboard_update_interval") ?? "1d";
 	
 	push(config.services, {
 		"type": "api",

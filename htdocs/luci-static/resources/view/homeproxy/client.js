@@ -492,6 +492,24 @@ return view.extend({
 		}
 		so.default = 'default-dns';
 		so.rmempty = false;
+
+		so = ss.option(form.ListValue, 'default_http_client', _('Default HTTP client'),
+			_('Default HTTP client for rule_set.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('http-client-out', _('Direct'));
+			uci.sections(data[0], 'http_client', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label);
+			});
+
+			return this.super('load', section_id);
+		}
+		so.default = 'http-client-out';
+		so.rmempty = false;
 		/* Routing settings end */
 
 		/* Routing nodes start */
@@ -1601,15 +1619,15 @@ return view.extend({
 		so.depends('type', 'remote');
 		so.modalonly = true;
 
-		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
+		so = ss.option(form.ListValue, 'http_client', _('HTTP client'),
 			_('Outbound used to download this rule-set (via sing-box 1.14 http_clients).'));
 		so.load = function(section_id) {
 			delete this.keylist;
 			delete this.vallist;
 
 			this.value('', _('Default'));
-			this.value('direct-out', _('Direct'));
-			uci.sections(data[0], 'routing_node', (res) => {
+			this.value('http-client-out', _('Direct'));
+			uci.sections(data[0], 'http_client', (res) => {
 				if (res.enabled === '1')
 					this.value(res['.name'], res.label);
 			});
@@ -1648,11 +1666,6 @@ return view.extend({
 		so.placeholder = '1d';
 		so.depends('type', 'remote');
 
-		so = ss.option(form.Value, 'http_client', _('Update http_client'),
-			_('Update http_client of rule set.'));
-		so.placeholder = 'http-client-out';
-		so.default = 'http-client-out';
-		so.depends('type', 'remote');
 		/* Rule set settings end */
 
 		/* ACL settings start */
@@ -1737,45 +1750,6 @@ return view.extend({
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends('homeproxy.config.ipv6_support', '1');
 		/* WAN IP policy end */
-		/* Clash settings start */
-		ss.tab('clash', _('Clash Settings'));
-		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
-		so.default = '1'
-		so.rmempty = false;
-		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
-		so.default = '192.168.3.2:9090'
-		so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
-		so.default = 'dashboard'
-		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
-		so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
-		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
-		so.default = 'direct-out'
-		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash Mode'));
-		so.default = 'rule'
-		/* Clash settings end */
-
-		/* sing-box API settings start */
-		ss.tab('sing-box-api', _('sing-box API Settings'));
-		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_enabled', _('Singbox dashboard Enable'));
-		so.default = '1'
-		so.rmempty = false;
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen', _('sing-box listen'));
-		so.default = '192.168.3.2'
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen_port', _('sing-box listen_port'));
-		so.default = '9080'
-		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_access_control_allow_private_network', _('sing-box allow_private_network'));
-		so.default = '0'
-		so.rmempty = false;
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_path', _('sing-box dashboard path'));
-		so.default = 'ui'
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_download_url', _('sing-box dashboard Download url'));
-		so.default = 'http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_http_client', _('sing-box dashboard http_client'));
-		so.default = 'http-client-out'
-		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_update_interval', _('sing-box dashboard update_interval'));
-		so.default = '1d'
-		/* sing-box API settings end */
-
 		/* Update Homeproxy files start */
 		ss.tab('updatehomeproxy', _('Update HomeProxy Settings'));
 		so = ss.taboption('updatehomeproxy', form.Flag, 'updatehomeproxy_enabled', _('Update Homeproxy Enable'));
@@ -1784,6 +1758,7 @@ return view.extend({
 		so = ss.taboption('updatehomeproxy', form.Value, 'updatehomeproxy_servers_url', _('Update Homeproxy Server URL'));
 		so.default = 'http://192.168.3.106:5000/homeproxy'
 		/* Update Homeproxy files end */
+		
 		/* Proxy domain list start */
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
 
@@ -1849,6 +1824,284 @@ return view.extend({
 		/* Direct domain list end */
         
 		/* ACL settings end */
+		/* =========================================================
+		* Custom HTTP Clients (sing-box 1.14.0+) - 精简单页版
+		* 内置默认项: http-client-out
+		* ========================================================= */
+		s.tab('http_client', _('HTTP Clients'));
+		o = s.taboption('http_client', form.SectionValue, '_http_client', form.GridSection, 'http_client',
+			_('Custom HTTP clients.'));
+
+		ss = o.subsection;
+		ss.addremove = true;
+		ss.rowcolors = true;
+		ss.sortable = true;
+		ss.nodescriptions = true;
+		ss.modaltitle = L.bind(hp.loadModalTitle, this, _('Custom HTTP client'), _('Add a custom HTTP client'), data[0]);
+		ss.sectiontitle = L.bind(hp.loadDefaultLabel, this, data[0]);
+		ss.renderSectionAdd = L.bind(hp.renderSectionAdd, this, ss);
+
+		/* 1. 基础标识与开关 */
+		so = ss.option(form.Value, 'label', _('Label'));
+		so.load = L.bind(hp.loadDefaultLabel, this, data[0]);
+		so.validate = L.bind(hp.validateUniqueValue, this, data[0], 'http_client', 'label');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'enabled', _('Enable'));
+		so.default = so.enabled;
+		so.rmempty = false;
+		so.editable = true;
+
+		/* 2. 核心协议与请求头 */
+		so = ss.option(form.ListValue, 'version', _('HTTP version'),
+			_('HTTP protocol version to use.'));
+		so.value('', _('Default'));
+		so.value('1', 'HTTP/1.1 (1)');
+		so.value('2', 'HTTP/2 (2)');
+		so.value('3', 'HTTP/3 (3)');
+
+		so = ss.option(form.Flag, 'disable_version_fallback', _('Disable version fallback'));
+		so.default = so.disabled;
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'headers', _('Custom headers'),
+			_('Format: <code>Key: Value</code>, e.g. <code>User-Agent: sing-box</code>.'));
+		so.modalonly = true;
+
+		/* 3. 基础 TLS */
+		so = ss.option(form.Flag, 'tls_enabled', _('Enable TLS'));
+		so.default = so.disabled;
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'tls_server_name', _('Server name (SNI)'));
+		so.datatype = 'hostname';
+		so.depends('tls_enabled', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'tls_insecure', _('Allow insecure'),
+			_('Accept any server certificate without verification.'));
+		so.default = so.disabled;
+		so.depends('tls_enabled', '1');
+		so.modalonly = true;
+
+		/* 4. 核心拨号与解析 */
+		so = ss.option(form.ListValue, 'detour', _('Detour'),
+			_('Tag of the upstream outbound to dial through.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('direct-out', _('Direct'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label || res['.name']);
+			});
+
+				return this.super('load', [section_id]);
+		};
+		so.editable = true;
+
+		so = ss.option(form.Value, 'connect_timeout', _('Connect timeout'),
+			_('Duration string, e.g. <code>5s</code>.'));
+		so.placeholder = '5s';
+		so.modalonly = true;
+
+		so = ss.option(form.ListValue, 'domain_resolver', _('Domain resolver'),
+			_('Tag of the DNS server used to resolve domain names.'));
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			uci.sections(data[0], 'dns_server', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label || res['.name']);
+			});
+
+			return this.super('load', section_id);
+		};
+		so.modalonly = true;
+
+		/* 5. 高级选项开关（仅控制界面显隐，不写入 UCI） */
+		so = ss.option(form.Flag, '_advanced', _('Show advanced options'),
+			_('Show less commonly used HTTP/2, QUIC, and dial options.'));
+		so.default = so.disabled;
+		so.rmempty = true;
+		so.modalonly = true;
+		so.write = function(section_id, formvalue) {
+			return true;
+		};
+		so.remove = function(section_id) {
+			return true;
+		};
+
+		/* 6. 高级冷门字段（默认隐藏，勾选 _advanced 后展开） */
+		so = ss.option(form.ListValue, 'engine', _('Engine'),
+			_('HTTP client engine implementation.'));
+		so.value('', _('Default'));
+		so.value('go', 'Go');
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'stream_receive_window', _('Stream receive window'),
+			_('Memory size string, e.g. <code>64 MB</code>.'));
+		so.placeholder = '64 MB';
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'connection_receive_window', _('Connection receive window'),
+			_('Memory size string, e.g. <code>64 MB</code>.'));
+		so.placeholder = '64 MB';
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'max_concurrent_streams', _('Max concurrent streams'));
+		so.datatype = 'uinteger';
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'idle_timeout', _('Idle timeout'),
+			_('Duration string, e.g. <code>30s</code>.'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'keep_alive_period', _('Keep alive period'),
+			_('Duration string, e.g. <code>15s</code>.'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'bind_interface', _('Bind interface'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'inet4_bind_address', _('IPv4 bind address'));
+		so.datatype = 'ip4addr';
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'inet6_bind_address', _('IPv6 bind address'));
+		so.datatype = 'ip6addr';
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'tcp_fast_open', _('TCP Fast Open'));
+		so.default = so.disabled;
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'tcp_multi_path', _('TCP Multi Path'));
+		so.default = so.disabled;
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'udp_fragment', _('UDP fragment'));
+		so.default = so.disabled;
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'network_strategy', _('Network strategy'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'network_type', _('Network type'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'fallback_network_type', _('Fallback network type'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'fallback_delay', _('Fallback delay'),
+			_('Duration string, e.g. <code>300ms</code>.'));
+		so.depends('_advanced', '1');
+		so.modalonly = true;
+
+		so = ss.option(form.Value, 'initial_packet_size', _('Initial packet size'));
+		so.datatype = 'uinteger';
+		so.depends({ '_advanced': '1', 'version': '3' });
+		so.modalonly = true;
+
+		so = ss.option(form.Flag, 'disable_path_mtu_discovery', _('Disable path MTU discovery'));
+		so.default = so.disabled;
+		so.depends({ '_advanced': '1', 'version': '3' });
+		so.modalonly = true;
+        /* Custom HTTP Clients settings end */
+
+		/* Dashboard settings start */
+
+		s.tab('dashboard', _('dashboard'));
+		o = s.taboption('dashboard', form.SectionValue, '_dashboard', form.NamedSection, 'dashboard', 'homeproxy');
+		ss = o.subsection;
+
+		/* Clash settings start */
+		ss.tab('clash', _('Clash Settings'));
+		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
+		so.default = '1'
+		so.rmempty = false;
+		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
+		so.default = '192.168.3.2:9090'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
+		so.default = 'dashboard'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
+		so.default = 'http://192.168.3.106:5000/ui/zashboard-gh-pages.zip'
+		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_detour', _('Clash dashboard Download url detour'));
+		so.default = 'direct-out'
+		so.load = function(section_id) {
+			delete this.keylist;
+			delete this.vallist;
+
+			this.value('', _('Default'));
+			this.value('direct-out', _('Direct'));
+			uci.sections(data[0], 'routing_node', (res) => {
+				if (res.enabled === '1')
+					this.value(res['.name'], res.label || res['.name']);
+			});
+
+				return this.super('load', [section_id]);
+		};
+		so.editable = true;
+		so = ss.taboption('clash', form.Value, 'clash_default_mode', _('Clash Mode'));
+		so.default = 'rule'
+		/* Clash settings end */
+
+		/* sing-box API settings start */
+		ss.tab('sing-box-api', _('sing-box API Settings'));
+		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_enabled', _('Singbox dashboard Enable'));
+		so.default = '1'
+		so.rmempty = false;
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen', _('sing-box listen'));
+		so.default = '192.168.3.2'
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen_port', _('sing-box listen_port'));
+		so.default = '9080'
+		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_access_control_allow_private_network', _('sing-box allow_private_network'));
+		so.default = '0'
+		so.rmempty = false;
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_path', _('sing-box dashboard path'));
+		so.default = 'ui'
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_download_url', _('sing-box dashboard Download url'));
+		so.default = 'http://192.168.3.106:5000/ui/sing-box-dashboard-gh-pages.zip'
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_http_client', _('sing-box dashboard http_client'));
+		so.default = 'http-client-out'
+		so.load = function(section_id) {
+					delete this.keylist;
+					delete this.vallist;
+
+					this.value('', _('Default'));
+					this.value('http-client-out', _('Direct'));
+					uci.sections(data[0], 'http_client', (res) => {
+						if (res.enabled === '1')
+							this.value(res['.name'], res.label);
+					});
+
+					return this.super('load', section_id);
+				}
+		so.editable = true;
+		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_dashboard_update_interval', _('sing-box dashboard update_interval'));
+		so.default = '1d'
+		/* sing-box API settings end */
+		/* Dashboard settings end */
+                
 		
 		return m.render();
 	}
