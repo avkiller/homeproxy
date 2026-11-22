@@ -57,7 +57,7 @@ const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outbound_dns,
     domain_strategy, dns_server, china_dns_server, dns_default_strategy, dns_default_server,
     dns_disable_cache, dns_disable_cache_expire, dns_client_subnet,
-    cache_file_store_dns, direct_domain_list, proxy_domain_list;
+    cache_file_store_dns, direct_domain_list, proxy_domain_list, default_outbound_http_client;
 
 if (routing_mode !== 'custom') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
@@ -96,6 +96,7 @@ if (routing_mode !== 'custom') {
 	default_outbound = uci.get(uciconfig, uciroutingsetting, 'default_outbound') || 'nil';
 	default_outbound_dns = uci.get(uciconfig, uciroutingsetting, 'default_outbound_dns') || 'default-dns';
 	domain_strategy = uci.get(uciconfig, uciroutingsetting, 'domain_strategy');
+	default_outbound_http_client = uci.get(uciconfig, uciroutingsetting, 'default_http_client') || 'http-client-out';
 }
 const dns_optimistic_cache = uci.get(uciconfig, ucidnssetting, 'optimistic_cache') || '0',
       dns_optimistic_timeout = uci.get(uciconfig, ucidnssetting, 'optimistic_timeout'),

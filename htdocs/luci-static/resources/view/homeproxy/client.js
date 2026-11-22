@@ -128,13 +128,23 @@ let stubValidator = {
 		return !!condition;
 	}
 };
+/* 新增获取本地ip */
+function getLanIpAddress() {
+	return network.getNetwork('lan').then((net) => {
+		if (!net)
+			return '0.0.0.0';
+		let addrs = net.getIPAddrs();
+		return (addrs && addrs.length > 0) ? addrs[0].split('/')[0] : '';
+	}).catch(() => '');
+}
 
 return view.extend({
 	load() {
 		return Promise.all([
 			uci.load('homeproxy'),
 			hp.getBuiltinFeatures(),
-			network.getHostHints()
+			network.getHostHints(),
+			getLanIpAddress()
 		]);
 	},
 
@@ -2029,6 +2039,7 @@ return view.extend({
         /* Custom HTTP Clients settings end */
 
 		/* Dashboard settings start */
+		let lanip = data[data.length-1]
 
 		s.tab('dashboard', _('dashboard'));
 		o = s.taboption('dashboard', form.SectionValue, '_dashboard', form.NamedSection, 'dashboard', 'homeproxy');
@@ -2037,10 +2048,34 @@ return view.extend({
 		/* Clash settings start */
 		ss.tab('clash', _('Clash Settings'));
 		so = ss.taboption('clash', form.Flag, 'clash_api_enabled', _('Clash dashboard Enable'));
-		so.default = '1'
+		so.default = '0'
 		so.rmempty = false;
-		so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
-		so.default = '192.168.3.2:9090'
+		
+		var hostOpt = so = ss.taboption('clash', form.Value, 'clash_listen_host', _('Clash listen host'));
+		if (lanip)
+			so.value(lanip, _('Current IP (%s)').format(lanip));
+		so.value('0.0.0.0', _('All interfaces (0.0.0.0)'));
+		so.default = '0.0.0.0';
+
+		var portOpt = so = ss.taboption('clash', form.Value, 'clash_listen_port', _('Clash listen port'));
+		so.default = '9090'
+
+		var ctrlOpt = so = ss.taboption('clash', form.Value, 'clash_controller', _('Clash dashboard controller'));
+		so.default = '0.0.0.0:9090'
+
+		var syncCtrl = function(ev, section_id) {
+			var ui = ctrlOpt.getUIElement(section_id);
+			if (!ui || ctrlOpt._locked) return;
+			var h = hostOpt.formvalue(section_id) || lanip || '0.0.0.0';
+			var p = portOpt.formvalue(section_id) || portOpt.cfgvalue(section_id) || '9090';
+			ui.setValue(h + ':' + p);
+		};
+		hostOpt.onchange = syncCtrl;
+		portOpt.onchange = syncCtrl;
+		ctrlOpt.onchange = function(ev, section_id) {
+			var ui = ctrlOpt.getUIElement(section_id);
+			ctrlOpt._locked = !!(ui && ui.getValue().trim());
+		};
 		so = ss.taboption('clash', form.Value, 'clash_external_ui', _('Clash dashboard UI'));
 		so.default = 'dashboard'
 		so = ss.taboption('clash', form.Value, 'clash_external_ui_download_url', _('Clash dashboard Download url'));
@@ -2068,10 +2103,13 @@ return view.extend({
 		/* sing-box API settings start */
 		ss.tab('sing-box-api', _('sing-box API Settings'));
 		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_enabled', _('Singbox dashboard Enable'));
-		so.default = '1'
+		so.default = '0'
 		so.rmempty = false;
 		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen', _('sing-box listen'));
-		so.default = '192.168.3.2'
+		if (lanip)
+			so.value(lanip, _('Current IP (%s)').format(lanip));
+        so.value('0.0.0.0', _('All interfaces (0.0.0.0)'));
+
 		so = ss.taboption('sing-box-api', form.Value, 'singbox_api_listen_port', _('sing-box listen_port'));
 		so.default = '9080'
 		so = ss.taboption('sing-box-api', form.Flag, 'singbox_api_access_control_allow_private_network', _('sing-box allow_private_network'));
