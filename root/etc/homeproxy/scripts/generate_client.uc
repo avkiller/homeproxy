@@ -1137,6 +1137,9 @@ if (!isEmpty(main_node)) {
 			action: 'resolve',
 			strategy: domain_strategy
 		});
+	// 添加默认的http客户端
+	if (!isEmpty(default_outbound_http_client))
+		config.route.default_http_client = default_outbound_http_client;
 	// 记录当前 reject 规则插入位置的索引值
 	let reject_idx = length(config.route.rules);
 
