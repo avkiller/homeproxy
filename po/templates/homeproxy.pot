@@ -2245,10 +2245,6 @@ msgstr ""
 msgid "RDP"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:1108
-msgid "RDRC timeout"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1142
 #: htdocs/luci-static/resources/view/homeproxy/server.js:709
 msgid "REALITY"

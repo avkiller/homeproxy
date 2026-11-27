@@ -2276,9 +2276,6 @@ msgstr "RCode"
 msgid "RDP"
 msgstr "RDP"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:1108
-msgid "RDRC timeout"
-msgstr "RDRC 超时"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1142
 #: htdocs/luci-static/resources/view/homeproxy/server.js:709
