@@ -1115,10 +1115,10 @@ return view.extend({
 			_('Store rejected DNS response cache.<br/>' +
 			'The check results of <code>Address filter DNS rule items</code> will be cached until expiration.'));
 
-		so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
-			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
-		so.datatype = 'uinteger';
-		so.depends('cache_file_store_dns', '1');
+		// so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
+		// 	_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
+		// so.datatype = 'uinteger';
+		// so.depends('cache_file_store_dns', '1');
 		/* DNS settings end */
 
 		/* DNS servers start */
