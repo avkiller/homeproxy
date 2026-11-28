@@ -88,6 +88,7 @@ cat > "$TEMP_PKG_DIR/lib/upgrade/keep.d/$PKG_NAME" <<-EOF
 /etc/homeproxy/resources/proxy_list.txt
 EOF
 
+po2lmo "$PKG_DIR/po/zh_Hans/homeproxy.po" "$TEMP_PKG_DIR/usr/lib/lua/luci/i18n/homeproxy.zh-cn.lmo"
 if [ "$PKG_MGR" == "apk" ]; then
 	find "$TEMP_PKG_DIR" -type f,l -printf '/%P\n' | sort > "$TEMP_PKG_DIR/lib/apk/packages/$PKG_NAME.list"
 	echo "/etc/config/homeproxy" >> "$TEMP_PKG_DIR/lib/apk/packages/$PKG_NAME.conffiles"
@@ -151,7 +152,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--info "name:$PKG_NAME" \
 		--info "version:$PKG_VERSION" \
 		--info "description:The modern ImmortalWrt proxy platform for ARM64/AMD64" \
-		--info "arch:all" \
+		--info "arch:noarch" \
 		--info "origin:$PKG_ORIGIN" \
 		--info "url:" \
 		--info "maintainer:Tianling Shen <cnsztl@immortalwrt.org>" \
