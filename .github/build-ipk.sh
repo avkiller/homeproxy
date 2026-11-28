@@ -165,8 +165,8 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--info "depends:libc sing-box firewall4 kmod-nft-tproxy ucode-mod-digest" \
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
-
-	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_noarch.apk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
+    ls -al $TEMP_DIR
+	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
 else
 	mkdir -p "$TEMP_PKG_DIR/CONTROL/"
 
@@ -227,6 +227,7 @@ default_prerm $0 $@' > "$TEMP_PKG_DIR/CONTROL/prerm"
 
 	ipkg-build -m "" "$TEMP_PKG_DIR" "$TEMP_DIR"
 
+    ls -al $TEMP_DIR
 	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_noarch.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.ipk"
 fi
 
