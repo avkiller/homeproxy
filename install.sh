@@ -4,7 +4,7 @@ set -eu
 
 REPO="avkiller/homeproxy"
 PKG_NAME="luci-homeproxy-avkiller"
-ASSET="luci-homeproxy-avkiller_ALL.apk"
+ASSET="luci-homeproxy-avkiller.apk"
 TMP_APK="/tmp/$ASSET"
 URL="https://github.com/$REPO/releases/latest/download/$ASSET"
 KEY_NAME="homeproxy-apk-public.pub"

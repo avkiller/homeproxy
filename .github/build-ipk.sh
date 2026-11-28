@@ -166,7 +166,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
 
-	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}_all.apk"
+	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
 else
 	mkdir -p "$TEMP_PKG_DIR/CONTROL/"
 
@@ -182,7 +182,7 @@ else
 		Section: luci
 		SourceDateEpoch: $PKG_SOURCE_DATE_EPOCH
 		Maintainer: Tianling Shen <cnsztl@immortalwrt.org>
-		Architecture: all
+		Architecture: noarch
 		Installed-Size: TO-BE-FILLED-BY-IPKG-BUILD
 		Description:  The modern ImmortalWrt proxy platform for ARM64/AMD64
 	EOF
@@ -227,7 +227,7 @@ default_prerm $0 $@' > "$TEMP_PKG_DIR/CONTROL/prerm"
 
 	ipkg-build -m "" "$TEMP_PKG_DIR" "$TEMP_DIR"
 
-	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk"
+	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.ipk"
 fi
 
 rm -rf "$TEMP_DIR"
