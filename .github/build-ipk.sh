@@ -166,7 +166,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
     ls -al $TEMP_DIR
-	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
+	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk" "$BASE_DIR/${PKG_NAME}-${PKG_VERSION}.apk"
 else
 	mkdir -p "$TEMP_PKG_DIR/CONTROL/"
 
