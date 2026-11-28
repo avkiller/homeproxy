@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
           printf '%s\n' "${HOMEPROXY_APK_SIGN_KEY}" > "${{ github.workspace }}/homeproxy-custom.key"
-          openssl pkey -in "${{ github.workspace }}/homeproxy-custom.key" -pubout -out "${{ github.workspace }}/homeproxy-custom.pem"
+          openssl ec -in "${{ github.workspace }}/homeproxy-custom.key" -pubout -out "${{ github.workspace }}/homeproxy-custom.pem"
           pushd .github
           APK_SIGN_KEY="${{ github.workspace }}/homeproxy-custom.key" \
             CUSTOM_PKG_NAME="homeproxy-avkiller" \
